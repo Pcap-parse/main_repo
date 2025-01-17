@@ -4,7 +4,7 @@ import json
 
 #select_layer = sys.argv[1]
 # pcap 파일 경로
-pcap_file_path = "OlympicDestroyer.exe.pcap"  # 분석할 pcap 파일 경로 입력
+pcap_file_path = "C:\\Users\\관리자\\Desktop\\hspace\\py\\OlympicDestroyer.exe.pcap"  # 분석할 pcap 파일 경로 입력
 capture = pyshark.FileCapture(pcap_file_path)
 
 eth_id = []
@@ -13,7 +13,7 @@ ipv6_id = []
 tcp_id = []
 udp_id = []
 
-class pk_byte: # 여기를 Conversations 요소들로 변수를 채우자
+class pk_byte: # 여기를 Conversations 요소를 변수로
     addrA: str = None
     addrB: str = None
     portA: str = None
@@ -28,7 +28,6 @@ class pk_byte: # 여기를 Conversations 요소들로 변수를 채우자
     max_time: str = "0.0"
     relative: str = None
     status: int = 0
-    flows: int = 0
 
 eth_list = [pk_byte()]
 ip_list = [pk_byte()]
@@ -56,8 +55,7 @@ def all_conv(packet, stream_index, type, src, dst):
 
     all_pk = all_list[stream_index]
     if all_pk.addrA == None:
-        all_pk.addrA = src
-        all_pk.addrB = dst
+        all_pk.addrA, all_pk.addrB = src, dst
     all_pk.total_packet += 1
     all_pk.total_byte += int(packet.length)
     if all_pk.addrA == src:
@@ -67,8 +65,7 @@ def all_conv(packet, stream_index, type, src, dst):
         all_pk.BtoA_packet += 1
         all_pk.BtoA_byte += int(packet.length)
     if all_pk.min_time ==  "0.0":
-        all_pk.min_time = packet.sniff_timestamp
-        all_pk.min_time = packet.sniff_timestamp
+        all_pk.min_time, all_pk.min_time = packet.sniff_timestamp, packet.sniff_timestamp
     if float(all_pk.min_time) > float(packet.sniff_timestamp):
         all_pk.min_time = packet.sniff_timestamp
     elif float(all_pk.max_time) < float(packet.sniff_timestamp):
@@ -81,8 +78,7 @@ def eth_conv(packet):
     stream_index = int(packet.eth.stream)
     while (len(eth_list) <= stream_index):
         eth_list.append(pk_byte())
-    src = packet.eth.src
-    dst = packet.eth.dst
+    src, dst = packet.eth.src, packet.eth.dst
     all_conv(packet,stream_index, 1, src, dst)
 
 def ip_conv(packet):
@@ -90,8 +86,7 @@ def ip_conv(packet):
     stream_index = int(packet.ip.stream)  
     while (len(ip_list) <= stream_index):
         ip_list.append(pk_byte()) 
-    src = packet.ip.src
-    dst = packet.ip.dst
+    src, dst = packet.ip.src, packet.ip.dst
     all_conv(packet, stream_index, 2, src, dst)
 
 def ipv6_conv(packet):
@@ -99,8 +94,7 @@ def ipv6_conv(packet):
     stream_index = int(packet.ipv6.stream)
     while (len(ipv6_list) <= stream_index):
         ipv6_list.append(pk_byte())   
-    src = packet.ipv6.src
-    dst = packet.ipv6.dst
+    src, dst = packet.ipv6.src, packet.ipv6.dst
     all_conv(packet, stream_index, 3, src, dst)
 
 def tcp_conv(packet):
@@ -108,20 +102,9 @@ def tcp_conv(packet):
     stream_index = int(packet.tcp.stream)
     while (len(tcp_list) <= stream_index):
         tcp_list.append(pk_byte())
-    src = packet.ip.src
-    dst = packet.ip.dst 
+    src, dst = packet.ip.src, packet.ip.dst
     if tcp_list[stream_index].portA == None:
-        tcp_list[stream_index].portA = packet.tcp.srcport
-        tcp_list[stream_index].portB = packet.tcp.dstport
-    if packet.tcp.flags_str == '··········S·' or '·······A··S·' or '···········F' or '·······A···F':
-        tcp_list[stream_index].flows += 1
-    elif tcp_list[stream_index].addrA == src:
-        if tcp_list[stream_index].status == 0:
-            tcp_list[stream_index].status = 1
-            tcp_list[stream_index].flows += 1
-    else:
-        if tcp_list[stream_index].status == 1:
-            tcp_list[stream_index].status = 0
+        tcp_list[stream_index].portA, tcp_list[stream_index].portB= packet.tcp.srcport, packet.tcp.dstport
     all_conv(packet, stream_index, 4, src, dst)
 
 def udp_conv(packet):
@@ -130,14 +113,11 @@ def udp_conv(packet):
     while (len(udp_list) <= stream_index):
         udp_list.append(pk_byte())
     if packet.eth.type == '0x86dd':
-        src = packet.ipv6.src
-        dst = packet.ipv6.dst
+        src, dst = packet.ipv6.src, packet.ipv6.dst
     else:
-        src = packet.ip.src
-        dst = packet.ip.dst   
+        src, dst = packet.ip.src, packet.ip.dst
     if udp_list[stream_index].portA == None:
-        udp_list[stream_index].portA = packet.udp.srcport
-        udp_list[stream_index].portB = packet.udp.dstport
+        udp_list[stream_index].portA, udp_list[stream_index].portB = packet.udp.srcport, packet.udp.dstport
     all_conv(packet, stream_index, 5, src, dst)
 
 def byte_change(byte):
@@ -155,8 +135,6 @@ def bit_per_sec(bytes, seconds):
         return f"{round(bits_per_sec / 1000)} kbps"
     else:
         return f"{round(bits_per_sec)} bits/s"
-
-
   
 for packet in capture:
     try:
@@ -189,10 +167,10 @@ ip_p = open("ip_packet.json","w", encoding='UTF-8-sig')
 ipv6_p = open("ipv6_packet.json","w", encoding='UTF-8-sig')
 tcp_p = open("tcp_packet.json","w", encoding='UTF-8-sig')
 udp_p = open("udp_packet.json","w", encoding='UTF-8-sig')
-addr_p = [eth_p, ip_p, ipv6_p, udp_p]
-addr_list = [eth_list, ip_list, ipv6_list, udp_list]
+addr_p = [eth_p, ip_p, ipv6_p, tcp_p, udp_p]
+addr_list = [eth_list, ip_list, ipv6_list, tcp_list, udp_list]
 
-for i in range(0,4):
+for i in range(0,len(addr_p)):
     for addr_pk in addr_list[i]:
         relative = round(float(addr_pk.relative),6)
         addr_dic = {
@@ -213,29 +191,6 @@ for i in range(0,4):
             
         addr_p[i].write(json.dumps(addr_dic, ensure_ascii=False, indent=4))
         addr_p[i].write(",\n")
-
-for addr_pk in tcp_list:
-    relative = round(float(addr_pk.relative),6)
-    addr_dic = {
-        "스트림 ID": str(tcp_list.index(addr_pk)),
-        "주소 A": addr_pk.addrA,
-        "포트 A": addr_pk.portA,
-        "주소 B": addr_pk.addrB,
-        "포트 B": addr_pk.portB,
-        "패킷": str(addr_pk.total_packet),
-        "바이트": byte_change(addr_pk.total_byte),
-        "Bytes A → B": byte_change(addr_pk.AtoB_byte),
-        "Bytes B → A": byte_change(addr_pk.BtoA_byte),
-        "Packets A → B": str(addr_pk.AtoB_packet),
-        "Packets B → A": str(addr_pk.BtoA_packet),
-        "상대 시작": f"{relative:.6f}",
-        "지속 시간": str(round(float(addr_pk.max_time) - float(addr_pk.min_time), 4)),
-        "Bits/s A → B": bit_per_sec(addr_pk.AtoB_byte, float(addr_pk.max_time) - float(addr_pk.min_time)),
-        "Bits/s B → A": bit_per_sec(addr_pk.BtoA_byte, float(addr_pk.max_time) - float(addr_pk.min_time)),
-        "Flows": str(addr_pk.flows)
-            }           
-    tcp_p.write(json.dumps(addr_dic, ensure_ascii=False, indent=4))
-    tcp_p.write(",\n")
 
 eth_p.close()
 ip_p.close()
