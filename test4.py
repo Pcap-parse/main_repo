@@ -49,8 +49,8 @@ def extract_conversation_details(pcap_file, output_json):
         def default_conversation():
             return {
                 "Bits/s A to B": "", "Bits/s B to A": "", "Bytes": 0, "Bytes A to B": 0, "Bytes B to A": 0,
-                "Duration": 0.0, "Packets": 0, "Packets A to B": 0, "Packets B to A": 0, "Percent Filtered": 0.0,
-                "Rel Start": 0.0, "Stream ID": "-1", "Total Packets": 0,
+                "Duration": 0.0, "Packets": 0, "Packets A to B": 0, "Packets B to A": 0,"Rel Start": 0.0, 
+                "Stream ID": "-1",
             }
         
         conversations = {protocol: defaultdict(default_conversation) for protocol in ["Ethernet", "IPv4", "IPv6", "TCP", "UDP"]}
