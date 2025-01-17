@@ -3,16 +3,19 @@ import json
 from collections import defaultdict
 
 
+# 대화의 첫 번째 패킷 여부를 추적하는 외부 상태 관리 변수
+rel_start_set_flags = {}
+
 def update_conversation(conversations, protocol, key, length, direction, rel_start, timestamp, stream_id):
     """
     대화 데이터 업데이트.
     """
     conv = conversations[protocol][key]
 
-    # 첫 번째 패킷이라면 Rel Start를 설정 (이미 설정된 경우 갱신하지 않음)
-    if "rel_start_set" not in conv or not conv["rel_start_set"]:
+    # 첫 번째 패킷인지 확인
+    if key not in rel_start_set_flags:
         conv["Rel Start"] = rel_start
-        conv["rel_start_set"] = True  # 첫 번째 패킷 처리 완료 플래그
+        rel_start_set_flags[key] = True  # 첫 번째 패킷 처리 완료 플래그 설정
 
     conv["Packets"] += 1
     conv["Bytes"] += length
@@ -45,7 +48,7 @@ def extract_conversation_details(pcap_file, output_json):
         
         def default_conversation():
             return {
-                "Bits/s A to B": 0, "Bits/s B to A": 0, "Bytes": 0, "Bytes A to B": 0, "Bytes B to A": 0,
+                "Bits/s A to B": "", "Bits/s B to A": "", "Bytes": 0, "Bytes A to B": 0, "Bytes B to A": 0,
                 "Duration": 0.0, "Packets": 0, "Packets A to B": 0, "Packets B to A": 0, "Percent Filtered": 0.0,
                 "Rel Start": 0.0, "Stream ID": "-1", "Total Packets": 0,
             }
