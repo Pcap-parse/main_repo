@@ -4,7 +4,7 @@ import json
 
 #select_layer = sys.argv[1]
 # pcap 파일 경로
-pcap_file_path = "C:\\Users\\관리자\\Desktop\\hspace\\py\\OlympicDestroyer.exe.pcap"  # 분석할 pcap 파일 경로 입력
+pcap_file_path = "D:\\악코_멘토링\\외주\\OlympicDestroyer.exe.pcap"  # 분석할 pcap 파일 경로 입력
 capture = pyshark.FileCapture(pcap_file_path)
 
 eth_id = []
@@ -161,18 +161,20 @@ for packet in capture:
     except AttributeError:
         pass
 
-
-eth_p = open("eth_packet.json","w", encoding='UTF-8-sig')
-ip_p = open("ip_packet.json","w", encoding='UTF-8-sig')
-ipv6_p = open("ipv6_packet.json","w", encoding='UTF-8-sig')
-tcp_p = open("tcp_packet.json","w", encoding='UTF-8-sig')
-udp_p = open("udp_packet.json","w", encoding='UTF-8-sig')
-addr_p = [eth_p, ip_p, ipv6_p, tcp_p, udp_p]
+addr_keys = ["eth", "ip", "ipv6", "tcp", "udp"]
 addr_list = [eth_list, ip_list, ipv6_list, tcp_list, udp_list]
 
-for i in range(0,len(addr_p)):
+result_dict = {
+    "eth" : [],
+    "ip" : [],
+    "ipv6" : [],
+    "tcp" : [],
+    "udp" : []
+}
+
+for i in range(len(addr_keys)):
     for addr_pk in addr_list[i]:
-        relative = round(float(addr_pk.relative),6)
+        relative = round(float(addr_pk.relative), 6)
         addr_dic = {
             "스트림 ID": str(addr_list[i].index(addr_pk)),
             "주소 A": addr_pk.addrA,
@@ -187,14 +189,11 @@ for i in range(0,len(addr_p)):
             "지속 시간": str(round(float(addr_pk.max_time) - float(addr_pk.min_time), 4)),
             "Bits/s A → B": bit_per_sec(addr_pk.AtoB_byte, float(addr_pk.max_time) - float(addr_pk.min_time)),
             "Bits/s B → A": bit_per_sec(addr_pk.BtoA_byte, float(addr_pk.max_time) - float(addr_pk.min_time))
-                }
-            
-        addr_p[i].write(json.dumps(addr_dic, ensure_ascii=False, indent=4))
-        addr_p[i].write(",\n")
+        }
+        # 딕셔너리를 해당 키의 리스트에 추가
+        result_dict[addr_keys[i]].append(addr_dic)
 
-eth_p.close()
-ip_p.close()
-ipv6_p.close()
-tcp_p.close()
-udp_p.close()
+# 하나의 JSON 파일로 기록
+with open("packets.json", "w", encoding="UTF-8-sig") as output_file:
+    json.dump(result_dict, output_file, ensure_ascii=False, indent=4)
 capture.close()
