@@ -124,7 +124,7 @@ def byte_change(byte):
     if byte > 1000:
         return f"{str(round(byte/1000))} kB"
     else:
-        return f"{str(round(byte))} 바이트"
+        return f"{str(round(byte))} Bytes"
 
 def bit_per_sec(bytes, seconds):
     if seconds == 0:
@@ -174,26 +174,36 @@ result_dict = {
 
 for i in range(len(addr_keys)):
     for addr_pk in addr_list[i]:
-        relative = round(float(addr_pk.relative), 6)
+        if addr_pk.relative == None:
+            continue
+        else:
+            relative = round(float(addr_pk.relative), 6)
+            relative = f"{relative:.6f}"
         addr_dic = {
-            "스트림 ID": str(addr_list[i].index(addr_pk)),
-            "주소 A": addr_pk.addrA,
-            "주소 B": addr_pk.addrB,
-            "패킷": str(addr_pk.total_packet),
-            "바이트": byte_change(addr_pk.total_byte),
-            "Bytes A → B": byte_change(addr_pk.AtoB_byte),
-            "Bytes B → A": byte_change(addr_pk.BtoA_byte),
-            "Packets A → B": str(addr_pk.AtoB_packet),
-            "Packets B → A": str(addr_pk.BtoA_packet),
-            "상대 시작": f"{relative:.6f}",
-            "지속 시간": str(round(float(addr_pk.max_time) - float(addr_pk.min_time), 4)),
-            "Bits/s A → B": bit_per_sec(addr_pk.AtoB_byte, float(addr_pk.max_time) - float(addr_pk.min_time)),
-            "Bits/s B → A": bit_per_sec(addr_pk.BtoA_byte, float(addr_pk.max_time) - float(addr_pk.min_time))
+            "Stream ID": str(addr_list[i].index(addr_pk)),
+            "Address A": addr_pk.addrA,
+            "Address B": addr_pk.addrB,
+            "Packet": str(addr_pk.total_packet),
+            "Byte": byte_change(addr_pk.total_byte),
+            "Bytes A -> B": byte_change(addr_pk.AtoB_byte),
+            "Bytes B -> A": byte_change(addr_pk.BtoA_byte),
+            "Packets A -> B": str(addr_pk.AtoB_packet),
+            "Packets B -> A": str(addr_pk.BtoA_packet),
+            "Rel Start": relative,
+            "Duration": str(round(float(addr_pk.max_time) - float(addr_pk.min_time), 4)),
+            "Bits/s A -> B": bit_per_sec(addr_pk.AtoB_byte, float(addr_pk.max_time) - float(addr_pk.min_time)),
+            "Bits/s B -> A": bit_per_sec(addr_pk.BtoA_byte, float(addr_pk.max_time) - float(addr_pk.min_time))
         }
+        if addr_keys[i] in ["tcp", "udp"]:
+            addr_dic["포트 A"] = addr_pk.portA
+            addr_dic["포트 B"] = addr_pk.portB 
         # 딕셔너리를 해당 키의 리스트에 추가
         result_dict[addr_keys[i]].append(addr_dic)
 
 # 하나의 JSON 파일로 기록
-with open("packets.json", "w", encoding="UTF-8-sig") as output_file:
-    json.dump(result_dict, output_file, ensure_ascii=False, indent=4)
+try:
+    with open("packets.json", "w") as output_file:
+        json.dump(result_dict, output_file, ensure_ascii=False, indent=4)
+except FileNotFoundError:
+    pass
 capture.close()
