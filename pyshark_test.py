@@ -1,11 +1,25 @@
 import pyshark
-import sys
 import json
 
-#select_layer = sys.argv[1]
+pcap_file_path = None
+filter_data = None
+
+print("PCAP 파일의 경로를 입력하세요: ", end = "")
+pcap_file_path =  input()
+print("필터 명령어를 입력하세요 (입력하지 않을경우 None 입력): ", end = "")
+filter_data =  input()
+
+try:
+    if filter_data == None:
+        capture = pyshark.FileCapture(pcap_file_path)
+    else:
+        capture = pyshark.FileCapture(pcap_file_path, display_filter=filter_data)
+except FileNotFoundError:
+    print("PCAP 파일의 경로를 정확히 입력하세요.")
+    exit()
+
 # pcap 파일 경로
-pcap_file_path = "D:\\악코_멘토링\\외주\\OlympicDestroyer.exe.pcap"  # 분석할 pcap 파일 경로 입력
-capture = pyshark.FileCapture(pcap_file_path)
+#pcap_file_path = "C:\test\올림픽디스트로이어_분석자료\OlympicDestroyer.exe.pcap"  # 분석할 pcap 파일 경로 입력
 
 eth_id = []
 ip_id = []
@@ -164,13 +178,14 @@ for packet in capture:
 addr_keys = ["eth", "ip", "ipv6", "tcp", "udp"]
 addr_list = [eth_list, ip_list, ipv6_list, tcp_list, udp_list]
 
-result_dict = {
+packet_dict = {
     "eth" : [],
     "ip" : [],
     "ipv6" : [],
     "tcp" : [],
     "udp" : []
 }
+filter_dict = {"filter" : filter_data}
 
 for i in range(len(addr_keys)):
     for addr_pk in addr_list[i]:
@@ -180,25 +195,28 @@ for i in range(len(addr_keys)):
             relative = round(float(addr_pk.relative), 6)
             relative = f"{relative:.6f}"
         addr_dic = {
-            "Stream ID": str(addr_list[i].index(addr_pk)),
             "Address A": addr_pk.addrA,
             "Address B": addr_pk.addrB,
-            "Packet": str(addr_pk.total_packet),
-            "Byte": byte_change(addr_pk.total_byte),
-            "Bytes A -> B": byte_change(addr_pk.AtoB_byte),
-            "Bytes B -> A": byte_change(addr_pk.BtoA_byte),
-            "Packets A -> B": str(addr_pk.AtoB_packet),
-            "Packets B -> A": str(addr_pk.BtoA_packet),
-            "Rel Start": relative,
+            "Bits/s A to B": bit_per_sec(addr_pk.AtoB_byte, float(addr_pk.max_time) - float(addr_pk.min_time)),
+            "Bits/s B to A": bit_per_sec(addr_pk.BtoA_byte, float(addr_pk.max_time) - float(addr_pk.min_time)),
+            "Bytes": byte_change(addr_pk.total_byte),
+            "Bytes A to B": byte_change(addr_pk.AtoB_byte),
+            "Bytes B to A": byte_change(addr_pk.BtoA_byte),
             "Duration": str(round(float(addr_pk.max_time) - float(addr_pk.min_time), 4)),
-            "Bits/s A -> B": bit_per_sec(addr_pk.AtoB_byte, float(addr_pk.max_time) - float(addr_pk.min_time)),
-            "Bits/s B -> A": bit_per_sec(addr_pk.BtoA_byte, float(addr_pk.max_time) - float(addr_pk.min_time))
+            "Packets": str(addr_pk.total_packet),
+            "Packets A to B": str(addr_pk.AtoB_packet),
+            "Packets B to A": str(addr_pk.BtoA_packet),
+            "Rel Start": relative,
+            "Stream ID": str(addr_list[i].index(addr_pk)),
         }
         if addr_keys[i] in ["tcp", "udp"]:
-            addr_dic["포트 A"] = addr_pk.portA
-            addr_dic["포트 B"] = addr_pk.portB 
+            addr_dic["Port A"] = addr_pk.portA
+            addr_dic["Port B"] = addr_pk.portB 
         # 딕셔너리를 해당 키의 리스트에 추가
-        result_dict[addr_keys[i]].append(addr_dic)
+        packet_dict[addr_keys[i]].append(addr_dic)
+result_dict = filter_dict
+result_dict.update(packet_dict)
+
 
 # 하나의 JSON 파일로 기록
 try:
@@ -206,4 +224,5 @@ try:
         json.dump(result_dict, output_file, ensure_ascii=False, indent=4)
 except FileNotFoundError:
     pass
+
 capture.close()
