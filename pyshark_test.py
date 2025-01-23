@@ -6,16 +6,14 @@ filter_data = None
 
 print("PCAP 파일의 경로를 입력하세요: ", end = "")
 pcap_file_path =  input()
-print("필터 명령어를 입력하세요 (입력하지 않을경우 None 입력): ", end = "")
+print("필터 명령어를 입력하세요 (입력하지 않을경우 Enter): ", end = "")
 filter_data =  input()
 
 try:
-    if filter_data == None:
-        capture = pyshark.FileCapture(pcap_file_path)
-    else:
-        capture = pyshark.FileCapture(pcap_file_path, display_filter=filter_data)
+    capture = pyshark.FileCapture(pcap_file_path, display_filter=filter_data)
+    filter_data = "None"
 except FileNotFoundError:
-    print("PCAP 파일의 경로를 정확히 입력하세요.")
+    print("PCAP 파일의 경로가 정확하지 않습니다.")
     exit()
 
 # pcap 파일 경로
