@@ -92,6 +92,9 @@ def filter_data(data, condition):
                     if field in entry:
                         # 필드 값의 데이터 타입을 확인 후 비교
                         entry_value = entry[field]
+
+                        if entry_value == "":
+                            continue
                         
                         # 비교 연산자 적용
                         if apply_operator(entry_value, operator, condition_value):
