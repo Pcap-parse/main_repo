@@ -17,6 +17,8 @@ field_mapping = {
     "packets_btoa": "Packets B to A",
     "rel_start": "Rel Start",
     "stream_id": "Stream ID",
+    "port_a": "Port A",
+    "port_b": "Port B",
 }
 
 def load_json(file_path):
@@ -93,7 +95,7 @@ def filter_data(data, condition):
                         # 필드 값의 데이터 타입을 확인 후 비교
                         entry_value = entry[field]
 
-                        if entry_value == "":
+                        if not entry_value:
                             continue
                         
                         # 비교 연산자 적용
