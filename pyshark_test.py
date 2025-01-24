@@ -11,7 +11,8 @@ filter_data =  input()
 
 try:
     capture = pyshark.FileCapture(pcap_file_path, display_filter=filter_data)
-    filter_data = "None"
+    if filter_data == "":
+        filter_data = "None"
 except FileNotFoundError:
     print("PCAP 파일의 경로가 정확하지 않습니다.")
     exit()
