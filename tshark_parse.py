@@ -7,7 +7,7 @@ input_file = 'tshark3.txt'  # tshark 출력이 저장된 파일
 output_file = 'udp_conversations.json'  # JSON 형식으로 추출된 데이터를 저장할 파일
 
 # 정규표현식 패턴 (각 항목을 정확히 추출)
-pattern = re.compile(r'([0-9a-fA-F.:]+:\d+) +<-> +([0-9a-fA-F.:]+:\d+) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')
+pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')
 
 # 파일 읽기
 with open(input_file, 'r') as file:
