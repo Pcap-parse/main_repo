@@ -32,8 +32,8 @@ for match in matches:
     dst_bytes = match[5]
     total_packets = match[6]
     total_bytes = match[7]
-    duration = match[8]
-    relative_start = match[9]
+    duration = match[9]
+    relative_start = match[8]
 
     # 딕셔너리로 변환
     conversation = {
