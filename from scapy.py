@@ -7,7 +7,7 @@ from multiprocessing import Pool
 from datetime import datetime
 from functools import partial
 
-def extract_conv(layer, pcap_file):
+def extract_conv(layer, filter, pcap_file):
 
     program = "C:\\Program Files\\Wireshark\\tshark.exe"  # 실행할 프로그램
 
@@ -16,7 +16,7 @@ def extract_conv(layer, pcap_file):
         program,
         "-r", pcap_file, 
         "-q", 
-        "-z", f"conv,{layer}",
+        "-z", f"conv,{layer},{filter}",
         "-o", "nameres.mac_name:FALSE"
     ]
 
@@ -46,19 +46,19 @@ def run_editcap(input_file, output_file):
     if result.returncode != 0:
         raise Exception(f"editcap Error: {result.stderr}")
 
-
 def parse_conv(layer, tshark_output):
 
     # 정규표현식 패턴 (각 항목을 정확히 추출)
-    pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')
+    pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')  
 
     # 데이터 리스트로 저장
     data = []
 
     # 정규표현식으로 데이터 추출
     for output in tshark_output:
-        if isinstance(output, list):
+        if isinstance(output, list): # 첫번째 요소가 문자열이 아니라 리스트 타입이여서 변환 필요.
             output = " ".join(output)
+
         matches = pattern.findall(output)
 
         # 추출한 값들을 리스트에 저장
@@ -110,14 +110,15 @@ def parse_conv(layer, tshark_output):
 
 def main():
     # pcap 파일 경로
-    pcap_file = "D:\\downloads\\DEF CON 26 ctf packet captures\\rela.pcap"
+    pcap_file = r"D:\downloads\wrccdc.2017-03-24.010540000000000.pcap\1gb.pcap"
     # JSON 형식으로 추출된 데이터를 저장할 파일
-    output_file = 'D:\\downloads\\DEF CON 26 ctf packet captures\\rela.json'
+    output_file = r"D:\downloads\wrccdc.2017-03-24.010540000000000.pcap\1gb.json"
+
     start = datetime.now()
     
     # pcap 분할 경로
-    split_file = "D:\\downloads\\DEF CON 26 ctf packet captures\\split\\"
-    split_name = "split.pcap"
+    split_file = r"D:\downloads\wrccdc.2017-03-24.010540000000000.pcap\output\split\\"
+    split_name = r"split.pcap"
     run_editcap(pcap_file, (f"{split_file}{split_name}"))
 
     pcap_files = glob.glob(f"{split_file}split_*.pcap")
@@ -126,13 +127,18 @@ def main():
     layers = ["eth", "ip", "ipv6", "tcp", "udp"]
     all_conv = {}
 
+    # filter 목록 추가
+    filter_value = "ip.addr==10.10.2.1"
+    all_conv = {
+        "filter" : filter_value
+    }
     
     # 각 레이어의 데이터를 추출 및 파싱
     for layer in layers:
         tshark_output = []
         print(f"Extracting {layer} conversations...")
         #tshark_output = extract_conv(layer, pcap_file)
-        extract_with_layer = partial(extract_conv, layer)
+        extract_with_layer = partial(extract_conv, layer, filter_value)
         with Pool(processes=os.cpu_count()) as pool:  # CPU 코어 개수만큼 병렬 실행
             tshark_output.append(pool.map(extract_with_layer, pcap_files))
         convs = parse_conv(layer, tshark_output)
