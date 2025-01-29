@@ -138,15 +138,15 @@ def main():
         convs = parse_conv(layer, tshark_output)
         all_conv.update(convs)
 
+    # JSON 형식으로 저장
+    with open(output_file, 'w') as json_file:
+        json.dump(all_conv, json_file, indent=4)
+
     for pcap in pcap_files:
         try:
             os.remove(pcap)  # 파일 삭제
         except Exception as e:
             print(f"Error deleting {pcap}: {e}")
-
-    # JSON 형식으로 저장
-    with open(output_file, 'w') as json_file:
-        json.dump(all_conv, json_file, indent=4)
 
     print(f"Data saved to {output_file}")
     print(f"시작시간 : {start.hour}시 {start.minute}분 {start.second}초")
