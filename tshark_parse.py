@@ -1,61 +1,114 @@
 import re
 import json
+import subprocess
+import os
+from glob import glob
 
-# tshark 출력 파일에서 읽기
-# tshark -r wrccdc.2017-03-24.010117000000000.pcap -q -z conv,udp > tshark3.txt -> tshark 명령어 실행(리눅스), udp만 추출
-input_file = 'tshark3.txt'  # tshark 출력이 저장된 파일
-output_file = 'udp_conversations.json'  # JSON 형식으로 추출된 데이터를 저장할 파일
+def extract_conv(layer, pcap_file):
+    program = "C:\\Program Files\\Wireshark\\tshark.exe"  # 실행할 프로그램
 
-# 정규표현식 패턴 (각 항목을 정확히 추출)
-pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')
+    # 명령어
+    command = [
+        program,
+        "-r", pcap_file, 
+        "-q", 
+        "-z", f"conv,{layer}",
+        "-o", "nameres.mac_name:FALSE"
+    ]
 
-# 파일 읽기
-with open(input_file, 'r') as file:
-    tshark_output = file.read()
+    # 프로그램 실행
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-# 정규표현식으로 데이터 추출
-matches = pattern.findall(tshark_output)
+    # 에러 확인
+    if result.returncode != 0:
+        raise Exception(f"layer {layer}: {result.stderr}")
+    
+    return result.stdout
 
-# 데이터 리스트로 저장
-data = []
 
-# 추출한 값들을 리스트에 저장
-for match in matches:
-    # IP와 포트를 분리
-    src_ip, src_port = match[0].rsplit(":", 1)
-    dst_ip, dst_port = match[1].rsplit(":", 1)
+def parse_conv(layer, tshark_output):
+    pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')
 
-    # 각 값 저장
-    packet_count_src = match[2]
-    src_bytes = match[3]
-    packet_count_dst = match[4]
-    dst_bytes = match[5]
-    total_packets = match[6]
-    total_bytes = match[7]
-    duration = match[9]
-    relative_start = match[8]
+    data = []
+    matches = pattern.findall(tshark_output)
 
-    # 딕셔너리로 변환
-    conversation = {
-        "source_ip": src_ip,
-        "source_port": src_port,
-        "destination_ip": dst_ip,
-        "destination_port": dst_port,
-        "packet_count_source": packet_count_src,
-        "source_bytes": src_bytes,
-        "packet_count_destination": packet_count_dst,
-        "destination_bytes": dst_bytes,
-        "total_packets": total_packets,
-        "total_bytes": total_bytes,
-        "duration": duration,
-        "relative_start": relative_start
-    }
+    for match in matches:
+        src_ip, dst_ip = match[0], match[1]
 
-    # 리스트에 추가
-    data.append(conversation)
+        if layer in ["tcp", "udp"]:
+            src_ip, src_port = src_ip.rsplit(":", 1)
+            dst_ip, dst_port = dst_ip.rsplit(":", 1)
+            conversation = {
+                "source_ip": src_ip,
+                "source_port": src_port,
+                "destination_ip": dst_ip,
+                "destination_port": dst_port
+            }
+        else:
+            conversation = {
+                "source_ip": src_ip,
+                "destination_ip": dst_ip
+            }
 
-# JSON 형식으로 저장
-with open(output_file, 'w') as json_file:
-    json.dump(data, json_file, indent=4)
+        rel_start = float(match[8])
+        conversation.update({
+            "bytes": match[7],
+            "bytes_atob": match[5],
+            "bytes_btoa": match[3],
+            "packets": match[6],
+            "packets_atob": match[4],
+            "packets_btoa": match[2],
+            "rel_start": rel_start,
+            "duration": match[9],
+            "stream_id": -1
+        })
 
-print(f"Data saved to {output_file}")
+        data.append(conversation)
+
+    stream_id = 0
+    for conv in sorted(data, key=lambda x: x["rel_start"]):
+        conv["stream_id"] = stream_id
+        stream_id += 1
+
+    return {layer: data}
+
+
+def analyze_pcaps(input_folder, output_folder):
+    # 폴더 내 모든 pcap 파일 찾기
+    pcap_files = glob(os.path.join(input_folder, "*.pcap"))
+    
+    if not pcap_files:
+        print("No PCAP files found in the directory.")
+        return
+
+    # 결과 저장 폴더가 없으면 생성
+    os.makedirs(output_folder, exist_ok=True)
+
+    layers = ["eth", "ip", "ipv6", "tcp", "udp"]
+
+    for pcap_file in pcap_files:
+        print(f"Analyzing {pcap_file}...")
+
+        # 파일명에서 확장자 제거하고 JSON 파일명 생성
+        base_name = os.path.splitext(os.path.basename(pcap_file))[0]
+        output_file = os.path.join(output_folder, f"{base_name}.json")
+
+        all_conv = {}
+
+        for layer in layers:
+            print(f"Extracting {layer} conversations...")
+            tshark_output = extract_conv(layer, pcap_file)
+            convs = parse_conv(layer, tshark_output)
+            all_conv.update(convs)
+
+        with open(output_file, 'w') as json_file:
+            json.dump(all_conv, json_file, indent=4)
+
+        print(f"Results saved to {output_file}")
+
+
+if __name__ == "__main__":
+    input_folder = "D:\script\wireshark\pcaps"  # PCAP 파일이 있는 폴더
+    output_folder = "D:\script\wireshark\pcap_results"  # 분석 결과를 저장할 폴더
+
+    analyze_pcaps(input_folder, output_folder)
