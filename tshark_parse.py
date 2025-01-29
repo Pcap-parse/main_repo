@@ -75,7 +75,7 @@ def parse_conv(layer, tshark_output):
 
 def analyze_pcaps(input_folder, output_folder):
     # 폴더 내 모든 pcap 파일 찾기
-    pcap_files = glob(os.path.join(input_folder, "*.pcap"))
+    pcap_files = glob(os.path.join(input_folder, "*.pcap*"))
     
     if not pcap_files:
         print("No PCAP files found in the directory.")
