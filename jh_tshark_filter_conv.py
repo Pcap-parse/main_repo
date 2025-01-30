@@ -46,6 +46,16 @@ def run_editcap(input_file, output_file):
     if result.returncode != 0:
         raise Exception(f"editcap Error: {result.stderr}")
 
+def change_byte(bytes):
+    data = bytes.split()
+    if data[1] == "bytes":
+        return int(data[0])
+    elif data[1] == "kB":
+        return int(data[0]) * 1024
+    elif data[1] == "MB":
+        return int(data[0]) * 1024 * 1024
+
+
 def parse_conv(layer, tshark_output):
 
     # 정규표현식 패턴 (각 항목을 정확히 추출)
@@ -84,12 +94,12 @@ def parse_conv(layer, tshark_output):
 
             # 딕셔너리로 변환 + 각 값 저장
             conversation.update({
-                "bytes": match[7],
-                "bytes_atob": match[5],
-                "bytes_btoa": match[3],
-                "packets": match[6],
-                "packets_atob": match[4],
-                "packets_btoa": match[2],
+                "bytes": change_byte(match[7]),
+                "bytes_atob": change_byte(match[5]),
+                "bytes_btoa": change_byte(match[3]),
+                "packets": int(match[6]),
+                "packets_atob": int(match[4]),
+                "packets_btoa": int(match[2]),
                 "rel_start": match[8],
                 "duration": match[9],
                 "stream_id": -1
@@ -128,7 +138,7 @@ def main():
     all_conv = {}
 
     # filter 목록 추가
-    filter_value = "ip.addr==10.10.2.1"
+    filter_value = ""
     all_conv = {
         "filter" : filter_value
     }
