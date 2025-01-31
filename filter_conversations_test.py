@@ -4,8 +4,9 @@ import operator as op
 
 # 연산자 우선순위 설정
 OPERATOR_PRECEDENCE = {
-    "&&": 2,
-    "||": 1
+    "!": 3,  # NOT 연산자 (단항)
+    "&&": 2, # AND 연산자
+    "||": 1  # OR 연산자
 }
 
 def load_json(file_path):
@@ -48,14 +49,15 @@ def evaluate_condition(entry, condition):
     return False
 
 def tokenize_condition(condition_str):
-    return re.findall(r"\(|\)|&&|\|\||\w+\s*(?:==|!=|>=|<=|>|<)\s*[^&|()]+", condition_str)
+    tokens = re.findall(r"!|\(|\)|&&|\|\||\w+\s*(?:==|!=|>=|<=|>|<)\s*[^&|()]+", condition_str)
+    return tokens
 
 def convert_to_postfix(tokens):
     output, stack = [], []
     for token in tokens:
         if token in OPERATOR_PRECEDENCE:
             while (stack and stack[-1] in OPERATOR_PRECEDENCE and 
-                   OPERATOR_PRECEDENCE[stack[-1]] >= OPERATOR_PRECEDENCE[token]):
+                   OPERATOR_PRECEDENCE[stack[-1]] > OPERATOR_PRECEDENCE[token]):
                 output.append(stack.pop())
             stack.append(token)
         elif token == "(":
@@ -66,8 +68,10 @@ def convert_to_postfix(tokens):
             stack.pop()
         else:
             output.append(token)
+    
     while stack:
         output.append(stack.pop())
+    
     return output
 
 def evaluate_postfix(entry, postfix_tokens):
@@ -76,8 +80,12 @@ def evaluate_postfix(entry, postfix_tokens):
         if token in ["&&", "||"]:
             b, a = stack.pop(), stack.pop()
             stack.append(a and b if token == "&&" else a or b)
+        elif token == "!":
+            a = stack.pop()
+            stack.append(not a)
         else:
             stack.append(evaluate_condition(entry, token))
+    
     return stack[0] if stack else False
 
 def filter_data(data, condition_str):
@@ -85,13 +93,6 @@ def filter_data(data, condition_str):
     postfix_tokens = convert_to_postfix(tokens)
 
     return [entry for prefix in data.values() for entry in prefix if evaluate_postfix(entry, postfix_tokens)]
-
-# def display_filtered_data(filtered_data):
-#     if filtered_data:
-#         for item in filtered_data:
-#             print(json.dumps(item, indent=4))
-#     else:
-#         print("조건에 맞는 데이터가 없습니다.")
 
 def save_filtered_data(filtered_data, output_file):
     with open(output_file, 'w') as file:
@@ -103,9 +104,6 @@ def main():
     data = load_json(file_path)
     conditions_input = input("필터링할 조건을 입력하세요: ")
     filtered_data = filter_data(data, conditions_input)
-
-    # 데이터 출력
-    # display_filtered_data(filtered_data)
 
     save_option = input("필터링된 데이터를 파일에 저장할까요? (y/n): ")
     if save_option.lower() == 'y':
