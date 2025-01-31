@@ -7,7 +7,7 @@ from multiprocessing import Pool
 from datetime import datetime
 from functools import partial
 
-def extract_conv(layer, filter, pcap_file):
+def extract_conv(layer, pcap_file):
 
     program = "C:\\Program Files\\Wireshark\\tshark.exe"  # 실행할 프로그램
 
@@ -16,7 +16,7 @@ def extract_conv(layer, filter, pcap_file):
         program,
         "-r", pcap_file, 
         "-q", 
-        "-z", f"conv,{layer},{filter}",
+        "-z", f"conv,{layer}",
         "-o", "nameres.mac_name:FALSE"
     ]
 
@@ -37,7 +37,7 @@ def run_editcap(input_file, output_file):
     # 명령어
     command = [
         program,
-        "-c", "1000000", # 패킷 10만개 단위로 분할
+        "-c", "1000000", # 패킷 10만개 단위로 분할(더 크게 분할해도 될듯?)
         input_file, # 분할 대상 파일
         output_file # 분할 결과 파일 (여러개면 뒤에 숫자 붙여지면서 만들어짐)
     ]
@@ -54,12 +54,14 @@ def change_byte(bytes):
         return int(data[0]) * 1024
     elif data[1] == "MB":
         return int(data[0]) * 1024 * 1024
+    elif data[1] == "GB":
+        return int(data[0]) * 1024 * 1024 * 1024
 
 
 def parse_conv(layer, tshark_output):
 
     # 정규표현식 패턴 (각 항목을 정확히 추출)
-    pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')  
+    pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')  
 
     # 데이터 리스트로 저장
     data = []
@@ -81,15 +83,15 @@ def parse_conv(layer, tshark_output):
                 src_ip, src_port = src_ip.rsplit(":", 1)
                 dst_ip, dst_port = dst_ip.rsplit(":", 1)
                 conversation = {
-                    "source_ip": src_ip,
-                    "source_port": src_port,
-                    "destination_ip": dst_ip,
-                    "destination_port": dst_port
+                    "Address A": src_ip,
+                    "Port A": src_port,
+                    "Address B": dst_ip,
+                    "Port B": dst_port
                 }
             else:
                 conversation = {
-                    "source_ip": src_ip,
-                    "destination_ip": dst_ip
+                    "Address A": src_ip,
+                    "Address B": dst_ip
                 }
 
             # 딕셔너리로 변환 + 각 값 저장
@@ -100,8 +102,8 @@ def parse_conv(layer, tshark_output):
                 "packets": int(match[6]),
                 "packets_atob": int(match[4]),
                 "packets_btoa": int(match[2]),
-                "rel_start": match[8],
-                "duration": match[9],
+                "rel_start": float(match[8]),
+                "duration": float(match[9]),
                 "stream_id": -1
             })
                         
@@ -117,17 +119,58 @@ def parse_conv(layer, tshark_output):
 
     return {layer : data}
 
+def combine_packets(layer, convs):
+    addr_comp = []
+    conv_list = []
+    for conv in convs:
+        if layer in ["tcp", "udp"]:
+            print()
+        else:
+            if frozenset([conv["Address A"], conv["Address B"]]) in addr_comp:
+                for conv_comp in conv_list:
+                    if frozenset([conv_comp["Address A"], conv_comp["Address B"]]) in conv:
+                        conv_list["bytes]"] += conv.get("bytes", 0)
+                        conv_list["packets"] += conv.get("packets", 0)
+                        conv_list["duration"] += conv.get("duration", 0)
+                        if conv_list["rel_start"] > conv["rel_start"]:
+                            conv_list["rel_start"] = conv["rel_start"]
+                        if conv_comp["Address A"] == conv["Address A"]:
+                            conv_list["bytes_atob"] += conv.get("bytes_atob", 0)
+                            conv_list["bytes_btoa"] += conv.get("bytes_btoa", 0)
+                            conv_list["packets_atob"] += conv.get("packets_atob", 0)
+                            conv_list["packets_btoa"] += conv.get("packets_btoa", 0)
+                        elif conv_comp["Address A"] == conv["Address B"]:
+                            conv_list["bytes_atob"] += conv.get("bytes_btoa", 0)
+                            conv_list["bytes_btoa"] += conv.get("bytes_atob", 0)
+                            conv_list["packets_atob"] += conv.get("packets_btoa", 0)
+                            conv_list["packets_btoa"] += conv.get("packets_atob", 0)
+                        convs.remove(conv)
+            else:
+                conv_list.append(conv)
+                addr_comp.append(frozenset([conv["Address A"], conv["Address B"]]))
+    for conv in convs:
+        for conv_tmp in conv_list:
+            if frozenset([conv_tmp["Address A"], conv_tmp["Address B"]]) in conv:
+                conv["bytes"] = conv_tmp["bytes"]
+                conv["bytes_atob"] = conv_tmp["bytes_atob"]
+                conv["bytes_btoa"] = conv_tmp["bytes_btoa"]
+                conv["packets"] = conv_tmp["packets"]
+                conv["packets_atob"] = conv_tmp["packets_atob"]
+                conv["packets_btoa"] = conv_tmp["packets_btoa"]
+                conv["rel_start"] = conv_tmp["rel_start"]
+                conv["duration"] = conv_tmp["duration"]
+    return convs
 
 def main():
     # pcap 파일 경로
-    pcap_file = r"D:\downloads\wrccdc.2017-03-24.010540000000000.pcap\1gb.pcap"
+    pcap_file = r"C:\Users\관리자\Desktop\hspace\py\OlympicDestroyer.exe.pcap"
     # JSON 형식으로 추출된 데이터를 저장할 파일
-    output_file = r"D:\downloads\wrccdc.2017-03-24.010540000000000.pcap\1gb.json"
+    output_file = r"C:\Users\관리자\Desktop\hspace\py\OlympicDestroyer.exe.json"
 
     start = datetime.now()
     
-    # pcap 분할 경로
-    split_file = r"D:\downloads\wrccdc.2017-03-24.010540000000000.pcap\output\split\\"
+    # pcap 분할 경로    
+    split_file = r"C:\Users\관리자\Desktop\hspace\py\split\\"
     split_name = r"split.pcap"
     run_editcap(pcap_file, (f"{split_file}{split_name}"))
 
@@ -136,22 +179,16 @@ def main():
     # 레이어 목록
     layers = ["eth", "ip", "ipv6", "tcp", "udp"]
     all_conv = {}
-
-    # filter 목록 추가
-    filter_value = ""
-    all_conv = {
-        "filter" : filter_value
-    }
     
     # 각 레이어의 데이터를 추출 및 파싱
     for layer in layers:
         tshark_output = []
         print(f"Extracting {layer} conversations...")
-        #tshark_output = extract_conv(layer, pcap_file)
-        extract_with_layer = partial(extract_conv, layer, filter_value)
+        extract_with_layer = partial(extract_conv, layer)
         with Pool(processes=os.cpu_count()) as pool:  # CPU 코어 개수만큼 병렬 실행
             tshark_output.append(pool.map(extract_with_layer, pcap_files))
         convs = parse_conv(layer, tshark_output)
+        convs[layer] = combine_packets(layer, convs[layer])
         all_conv.update(convs)
 
     # JSON 형식으로 저장
