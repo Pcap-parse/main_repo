@@ -3,6 +3,9 @@ import json
 import subprocess
 import os
 from glob import glob
+from multiprocessing import Pool
+from datetime import datetime
+from functools import partial
 
 def extract_conv(layer, pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe"  # 실행할 프로그램
@@ -26,8 +29,37 @@ def extract_conv(layer, pcap_file):
     return result.stdout
 
 
+def run_editcap(input_file, output_file):
+
+    program = "C:\\Program Files\\Wireshark\\editcap.exe"
+
+    # 명령어
+    command = [
+        program,
+        "-c", "1000000", # 패킷 10만개 단위로 분할
+        input_file, # 분할 대상 파일
+        output_file # 분할 결과 파일 (여러개면 뒤에 숫자 붙여지면서 만들어짐)
+    ]
+
+    result = subprocess.run(command)
+    if result.returncode != 0:
+        raise Exception(f"editcap Error: {result.stderr}")
+
+
+def change_byte(bytes):
+    data = bytes.split()
+    if data[1] == "bytes":
+        return int(data[0])
+    elif data[1] == "kB":
+        return int(data[0]) * 1024
+    elif data[1] == "MB":
+        return int(data[0]) * 1024 * 1024
+    elif data[1] == "GB":
+        return int(data[0]) * 1024 * 1024 * 1024
+
+
 def parse_conv(layer, tshark_output):
-    pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +(\d+) +([\d,]+ (?:MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')
+    pattern = re.compile(r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)')
 
     data = []
     matches = pattern.findall(tshark_output)
@@ -50,16 +82,15 @@ def parse_conv(layer, tshark_output):
                 "destination_ip": dst_ip
             }
 
-        rel_start = float(match[8])
         conversation.update({
-            "bytes": match[7],
-            "bytes_atob": match[5],
-            "bytes_btoa": match[3],
-            "packets": match[6],
-            "packets_atob": match[4],
-            "packets_btoa": match[2],
-            "rel_start": rel_start,
-            "duration": match[9],
+            "bytes": change_byte(match[7]),
+            "bytes_atob": change_byte(match[5]),
+            "bytes_btoa": change_byte(match[3]),
+            "packets": int(match[6]),
+            "packets_atob": int(match[4]),
+            "packets_btoa": int(match[2]),
+            "rel_start": float(match[8]),
+            "duration": float(match[9]),
             "stream_id": -1
         })
 
@@ -111,4 +142,10 @@ if __name__ == "__main__":
     input_folder = "D:\script\wireshark\pcaps"  # PCAP 파일이 있는 폴더
     output_folder = "D:\script\wireshark\pcap_results"  # 분석 결과를 저장할 폴더
 
+    start = datetime.now()
     analyze_pcaps(input_folder, output_folder)
+
+
+    print(f"시작시간 : {start.hour}시 {start.minute}분 {start.second}초")
+    end = datetime.now()
+    print(f"종료시간 : {end.hour}시 {end.minute}분 {end.second}초")
