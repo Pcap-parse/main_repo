@@ -3,9 +3,7 @@ import json
 import subprocess
 import os
 from glob import glob
-from multiprocessing import Pool
 from datetime import datetime
-from functools import partial
 
 def extract_conv(layer, pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe"  # 실행할 프로그램
@@ -71,15 +69,15 @@ def parse_conv(layer, tshark_output):
             src_ip, src_port = src_ip.rsplit(":", 1)
             dst_ip, dst_port = dst_ip.rsplit(":", 1)
             conversation = {
-                "source_ip": src_ip,
-                "source_port": src_port,
-                "destination_ip": dst_ip,
-                "destination_port": dst_port
+                "address A": src_ip,
+                "port A": src_port,
+                "address B": dst_ip,
+                "port B": dst_port
             }
         else:
             conversation = {
-                "source_ip": src_ip,
-                "destination_ip": dst_ip
+                "address A": src_ip,
+                "address B": dst_ip
             }
 
         conversation.update({
