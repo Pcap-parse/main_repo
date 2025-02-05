@@ -173,7 +173,7 @@ def merge_results(all_results):
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
-                    existing["rel_start"] += conv["rel_start"]
+                    existing["rel_start"] = min(conv["rel_start"],existing["rel_start"])
                     existing["duration"] += conv["duration"]
 
     # stream_id 재정렬
