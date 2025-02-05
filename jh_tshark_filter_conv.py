@@ -170,9 +170,9 @@ def combine_packets(layer, convs):
 
 def main():
     # pcap 파일 경로
-    pcap_file = r"D:\downloads\wrccdc.2017-03-24.010540000000000.pcap\1gb.pcap"
+    pcap_file = r"C:\Users\관리자\Desktop\hspace\py\OlympicDestroyer.exe.pcap"
     # JSON 형식으로 추출된 데이터를 저장할 파일
-    output_file = r"D:\downloads\wrccdc.2017-03-24.010540000000000.pcap\1gb.json"
+    output_file = r"C:\Users\관리자\Desktop\hspace\py\OlympicDestroyer.exe.json"
 
     start = datetime.now()
     
