@@ -143,6 +143,77 @@ def analyze_pcap_file(pcap_file, output_folder):
 
     shutil.rmtree(split_dir, ignore_errors=True)
 
+def combine_packets(layer, convs, tsp_min):
+    combined = {}  # 송수신 쌍을 저장하는 딕셔너리
+    after_combined = []  # 최종 결과를 저장할 리스트
+    
+    for conv in convs:
+        if layer in ["tcp", "udp"]:
+            key = frozenset([
+                (conv["Address A"], conv["Port A"]), 
+                (conv["Address B"], conv["Port B"])
+            ])  # TCP/UDP의 경우, 포트까지 포함한 키 생성
+        else:
+            key = frozenset([conv["Address A"], conv["Address B"]])  # 일반적인 MAC 주소 비교
+
+        if key in combined:
+            combined[key]["bytes"] += conv["bytes"]
+            combined[key]["bytes_atob"] += conv["bytes_atob"]
+            combined[key]["bytes_btoa"] += conv["bytes_btoa"]
+            combined[key]["packets"] += conv["packets"]
+            combined[key]["packets_atob"] += conv["packets_atob"]
+            combined[key]["packets_btoa"] += conv["packets_btoa"]
+            combined[key]["duration"] = max(combined[key]["duration"], conv["duration"])
+
+            # after_combined에서 Address A, B가 동일한 항목을 찾아 업데이트
+            for pk in after_combined:
+                if layer in ["tcp", "udp"]:
+                    match = frozenset([
+                        (pk["Address A"], pk["Port A"]), 
+                        (pk["Address B"], pk["Port B"])
+                    ]) == key
+                else:
+                    match = frozenset([pk["Address A"], pk["Address B"]]) == key
+
+                if match:
+                    pk["bytes"] = combined[key]["bytes"]
+                    pk["bytes_atob"] = combined[key]["bytes_atob"]
+                    pk["bytes_btoa"] = combined[key]["bytes_btoa"]
+                    pk["packets"] = combined[key]["packets"]
+                    pk["packets_atob"] = combined[key]["packets_atob"]
+                    pk["packets_btoa"] = combined[key]["packets_btoa"]
+                    # 가장 큰 duration 값 유지
+                    pk["duration"] = max(pk["duration"], combined[key]["duration"])
+                    break  # 업데이트가 완료되면 루프 종료 (성능 향상)
+        else:
+            new_entry = {
+                "Address A": conv["Address A"],
+                "Address B": conv["Address B"],
+                "bytes": conv["bytes"],
+                "bytes_atob": conv["bytes_atob"],
+                "bytes_btoa": conv["bytes_btoa"],
+                "packets": conv["packets"],
+                "packets_atob": conv["packets_atob"],
+                "packets_btoa": conv["packets_btoa"],
+                "rel_start": conv["rel_start"],  # 최초값 그대로 저장
+                "duration": conv["duration"],
+                "stream_id": -1
+            }
+            if layer in ["tcp", "udp"]:
+                new_entry["Port A"] = conv["Port A"]
+                new_entry["Port B"] = conv["Port B"]
+
+            combined[key] = new_entry  # 딕셔너리에도 저장
+            after_combined.append(new_entry)  # 리스트에도 저장
+            
+    # 딕셔너리를 rel_start 기준으로 정렬 후 순서대로 인덱스 부여
+    after_combined.sort(key=lambda x: float(x["rel_start"]))
+    for index, i in enumerate(after_combined):        
+        i["duration"] = i["duration"] - i["rel_start"] # 상대 시간으로 변경
+        i["rel_start"] = i["rel_start"] - tsp_min # 상대 시간으로 변경       
+        i["stream_id"] = index
+
+    return after_combined  # 리스트 형태 유지
 
 def merge_results(all_results):
     merged_data = {layer: {} for layer in ["eth", "ip", "ipv6", "tcp", "udp"]}
