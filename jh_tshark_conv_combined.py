@@ -144,7 +144,6 @@ def combine_packets(layer, convs, tsp_min):
             combined[key]["packets_atob"] += conv["packets_atob"]
             combined[key]["packets_btoa"] += conv["packets_btoa"]
             combined[key]["duration"] = max(combined[key]["duration"], conv["duration"])
-            combined[key]["rel_start"] = min(combined[key]["rel_start"], conv["rel_start"])
 
             # after_combined에서 Address A, B가 동일한 항목을 찾아 업데이트
             for pk in after_combined:
@@ -165,8 +164,6 @@ def combine_packets(layer, convs, tsp_min):
                     pk["packets_btoa"] = combined[key]["packets_btoa"]
                     # 가장 큰 duration 값 유지
                     pk["duration"] = max(pk["duration"], combined[key]["duration"])
-                    # 가장 작은 rel_start 값 유지
-                    pk["rel_start"] = min(pk["rel_start"], combined[key]["rel_start"])
                     break  # 업데이트가 완료되면 루프 종료 (성능 향상)
         else:
             new_entry = {
