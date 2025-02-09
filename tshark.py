@@ -99,22 +99,31 @@ def parse_conv(layer, tshark_output):
     return {layer: data}
 
 
+def process_layer(layer, pcap_chunk):
+    """하나의 레이어를 처리하는 함수 (멀티스레딩용)"""
+    try:
+        tshark_output = extract_conv(layer, pcap_chunk)
+        convs = parse_conv(layer, tshark_output)
+        return layer, convs
+    except Exception as e:
+        print(f"Error processing {pcap_chunk} for {layer}: {e}")
+        return layer, {}
+
+
 def process_pcap_chunk(pcap_chunk):
-    """하나의 pcap 조각을 분석하는 함수"""
+    """하나의 pcap 조각을 분석하는 함수 (멀티스레딩)"""
     layers = ["eth", "ip", "ipv6", "tcp", "udp"]
     result = {}
 
-    for layer in layers:
-        try:
-            tshark_output = extract_conv(layer, pcap_chunk)
-            convs = parse_conv(layer, tshark_output)
-            for key, value in convs.items():
-                if key in result:
-                    result[key].extend(value)
-                else:
-                    result[key] = value
-        except Exception as e:
-            print(f"Error processing {pcap_chunk} for {layer}: {e}")
+    # 각 레이어에 대해 멀티스레딩을 사용
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(process_layer, layer, pcap_chunk) for layer in layers]
+
+    # 각 스레드의 결과를 합침
+    for future in futures:
+        layer, convs = future.result()
+        if convs:
+            result[layer] = convs[layer]
 
     return result
 
@@ -132,8 +141,8 @@ def analyze_pcap_file(pcap_file, output_folder):
 
     # 🔹 `ThreadPoolExecutor`를 사용하여 멀티스레딩 처리
     results = []
-    with ThreadPoolExecutor(max_workers=cpu_count()) as executor:
-        results = list(executor.map(process_pcap_chunk, split_pcaps))
+    with Pool(processes=cpu_count()) as pool:
+        results = pool.map(process_pcap_chunk, split_pcaps)
 
     merged_results = merge_results(results)
 
@@ -291,8 +300,9 @@ def analyze_pcap_files(input_folder, output_folder):
         print("No PCAP or PCAPNG files found.")
         return
 
-    with Pool(processes=cpu_count()) as pool:
-        pool.starmap(analyze_pcap_file, [(pcap_file, output_folder) for pcap_file in pcap_files])
+    # 순차적으로 각 pcap 파일을 처리
+    for pcap_file in pcap_files:
+        analyze_pcap_file(pcap_file, output_folder)
 
 
 if __name__ == "__main__":
