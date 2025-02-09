@@ -227,9 +227,6 @@ def combine_packets(layer, convs, tsp_min):
 def merge_results(all_results):
     merged_data = {layer: {} for layer in ["eth", "ip", "ipv6", "tcp", "udp"]}
 
-    max_rel = {layer: 0 for layer in ["eth", "ip", "ipv6", "tcp", "udp"]}
-    previous_max_rel_start = {layer: 0 for layer in ["eth", "ip", "ipv6", "tcp", "udp"]} 
-
     # 리스트 안에 여러 딕셔너리가 있는 경우 해결
     for result in all_results:
         for layer, conversations in result.items():
@@ -237,12 +234,6 @@ def merge_results(all_results):
                 merged_data[layer] = {}
 
             for conv in conversations:
-                if conv["rel_start"] == 0:
-                    max_rel[layer] +=  previous_max_rel_start[layer]
-                    previous_max_rel_start[layer] = 0
-                    if layer in "eth":
-                        print(max_rel)
-
                 # 'tcp' 또는 'udp'일 경우, port 정보를 포함한 key 생성
                 if layer in ["tcp", "udp"]:
                     key = tuple(sorted([conv["address A"], conv["port A"], conv["address B"], conv["port B"]]))
@@ -254,7 +245,7 @@ def merge_results(all_results):
                 if key not in merged_data[layer]:
                     merged_data[layer][key] = {
                         **conv.copy(),  # 전체 데이터를 복사
-                        "rel_start": conv["rel_start"] + max_rel[layer],  # rel_start는 따로 처리
+                        "rel_start": conv["rel_start"]  # rel_start는 따로 처리
                     }
 
                 else:
@@ -278,9 +269,7 @@ def merge_results(all_results):
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
-                    existing["duration"] = existing["duration"] + conv["duration"] + conv["rel_start"]
-
-                previous_max_rel_start[layer] = max(conv["rel_start"], previous_max_rel_start[layer])
+                    existing["duration"] = existing["duration"]
 
     # stream_id 재정렬
     for layer in merged_data:
