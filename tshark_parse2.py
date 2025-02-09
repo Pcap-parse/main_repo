@@ -99,28 +99,37 @@ def parse_conv(layer, tshark_output):
     return {layer: data}
 
 
+def process_layer(layer, pcap_chunk):
+    """하나의 레이어를 처리하는 함수 (멀티스레딩용)"""
+    try:
+        tshark_output = extract_conv(layer, pcap_chunk)
+        convs = parse_conv(layer, tshark_output)
+        return layer, convs
+    except Exception as e:
+        print(f"Error processing {pcap_chunk} for {layer}: {e}")
+        return layer, {}
+
+
 def process_pcap_chunk(pcap_chunk):
-    """하나의 pcap 조각을 분석하는 함수"""
+    """하나의 pcap 조각을 분석하는 함수 (멀티스레딩)"""
     layers = ["eth", "ip", "ipv6", "tcp", "udp"]
     result = {}
 
-    for layer in layers:
-        try:
-            tshark_output = extract_conv(layer, pcap_chunk)
-            convs = parse_conv(layer, tshark_output)
-            for key, value in convs.items():
-                if key in result:
-                    result[key].extend(value)
-                else:
-                    result[key] = value
-        except Exception as e:
-            print(f"Error processing {pcap_chunk} for {layer}: {e}")
+    # 각 레이어에 대해 멀티스레딩을 사용
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(process_layer, layer, pcap_chunk) for layer in layers]
+
+    # 각 스레드의 결과를 합침
+    for future in futures:
+        layer, convs = future.result()
+        if convs:
+            result[layer] = convs[layer]
 
     return result
 
 
 def analyze_pcap_file(pcap_file, output_folder):
-    """하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기"""
+    """하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기 (멀티프로세싱 + 멀티스레딩)"""
     print(f"Splitting {pcap_file}...")
 
     split_dir = os.path.join(output_folder, "split")
@@ -130,11 +139,11 @@ def analyze_pcap_file(pcap_file, output_folder):
         print(f"분할된 파일이 없습니다: {pcap_file}")
         return
 
-    # 🔹 `ThreadPoolExecutor`를 사용하여 멀티스레딩 처리
-    results = []
-    with ThreadPoolExecutor(max_workers=cpu_count()) as executor:
-        results = list(executor.map(process_pcap_chunk, split_pcaps))
+    # 멀티스레딩을 사용하여 각 분할된 pcap 파일을 동시에 처리
+    with Pool(processes=cpu_count()) as pool:
+        results = pool.map(process_pcap_chunk, split_pcaps)
 
+    # 분석 결과 병합
     merged_results = merge_results(results)
 
     output_file = os.path.join(output_folder, f"{os.path.basename(pcap_file)}.json")
@@ -213,15 +222,16 @@ def merge_results(all_results):
 
 
 def analyze_pcap_files(input_folder, output_folder):
-    """PCAP 및 PCAPNG 파일 단위로 멀티프로세싱을 수행하는 함수"""
+    """PCAP 및 PCAPNG 파일 단위로 순차적으로 처리하는 함수"""
     pcap_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith((".pcap", ".pcapng"))]
 
     if not pcap_files:
         print("No PCAP or PCAPNG files found.")
         return
 
-    with Pool(processes=cpu_count()) as pool:
-        pool.starmap(analyze_pcap_file, [(pcap_file, output_folder) for pcap_file in pcap_files])
+    # 순차적으로 각 pcap 파일을 처리
+    for pcap_file in pcap_files:
+        analyze_pcap_file(pcap_file, output_folder)
 
 
 if __name__ == "__main__":
