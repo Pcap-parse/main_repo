@@ -4,6 +4,7 @@ import operator as op
 
 # 연산자 우선순위 설정
 OPERATOR_PRECEDENCE = {
+    "!": 3,
     "&&": 2,
     "||": 1
 }
@@ -48,14 +49,14 @@ def evaluate_condition(entry, condition):
     return False
 
 def tokenize_condition(condition_str):
-    return re.findall(r"\(|\)|&&|\|\||\w+\s*(?:==|!=|>=|<=|>|<)\s*[^&|()]+", condition_str)
+    return re.findall(r"\(|\)|&&|\|\||!\s*\w+\s*(?:==|!=|>=|<=|>|<)\s*[^&|()]+|\w+\s*(?:==|!=|>=|<=|>|<)\s*[^&|()]+|!", condition_str)
 
 def convert_to_postfix(tokens):
     output, stack = [], []
     for token in tokens:
         if token in OPERATOR_PRECEDENCE:
             while (stack and stack[-1] in OPERATOR_PRECEDENCE and 
-                   OPERATOR_PRECEDENCE[stack[-1]] >= OPERATOR_PRECEDENCE[token]):
+                   OPERATOR_PRECEDENCE[stack[-1]] > OPERATOR_PRECEDENCE[token]):
                 output.append(stack.pop())
             stack.append(token)
         elif token == "(":
@@ -66,18 +67,24 @@ def convert_to_postfix(tokens):
             stack.pop()
         else:
             output.append(token)
+
     while stack:
         output.append(stack.pop())
+
     return output
 
 def evaluate_postfix(entry, postfix_tokens):
     stack = []
     for token in postfix_tokens:
-        if token in ["&&", "||"]:
+        if token == "!":  # 단항 연산자 처리
+            a = stack.pop()
+            stack.append(not a)
+        elif token in ["&&", "||"]:
             b, a = stack.pop(), stack.pop()
             stack.append(a and b if token == "&&" else a or b)
         else:
             stack.append(evaluate_condition(entry, token))
+    
     return stack[0] if stack else False
 
 def filter_data(data, condition_str):
