@@ -84,7 +84,13 @@ def filter_data(data, condition_str):
     tokens = tokenize_condition(condition_str)
     postfix_tokens = convert_to_postfix(tokens)
 
-    return [entry for prefix in data.values() for entry in prefix if evaluate_postfix(entry, postfix_tokens)]
+    filtered_result = {}
+    for key, entries in data.items():
+        filtered_entries = [entry for entry in entries if evaluate_postfix(entry, postfix_tokens)]
+        if filtered_entries:  # 필터링된 데이터가 있으면 추가
+            filtered_result[key] = filtered_entries
+
+    return filtered_result  # 리스트가 아닌 원본 구조 유지
 
 # def display_filtered_data(filtered_data):
 #     if filtered_data:
