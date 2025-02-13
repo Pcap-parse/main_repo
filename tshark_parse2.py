@@ -29,6 +29,26 @@ def extract_conv(layer, pcap_file):
     return result.stdout
 
 
+def extract_timestamp(pcap_file):
+    program = "C:\\Program Files\\Wireshark\\tshark.exe"
+    command = [
+        program, 
+        "-r", pcap_file, 
+        "-T", "fields", 
+        "-e", "frame.time_epoch", 
+        "-c", "1"  # 첫 번째 패킷만 가져오기
+    ]
+
+    tsp = subprocess.run(command, stdout=subprocess.PIPE, text=True)
+    
+    if tsp.returncode != 0:
+        raise Exception(f"{tsp.stderr}")
+    
+    first_timestamp = tsp.stdout.strip()  # 첫 번째 타임스탬프 반환
+
+    return float(first_timestamp)
+
+
 def split_pcap(input_file, output_dir, chunk_size=1000000):
     """editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할"""
     program = "C:\\Program Files\\Wireshark\\editcap.exe"
@@ -57,7 +77,7 @@ def change_byte(bytes):
     return int(data[0].replace(",", "")) * unit_map[data[1]]
 
 
-def parse_conv(layer, tshark_output):
+def parse_conv(layer, tshark_output, tsp_min):
     """tshark 출력 결과를 JSON 데이터로 변환"""
     pattern = re.compile(
         r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)'
@@ -89,7 +109,7 @@ def parse_conv(layer, tshark_output):
             "packets": int(match[6]),
             "packets_atob": int(match[4]),
             "packets_btoa": int(match[2]),
-            "rel_start": float(match[8]),
+            "rel_start": float(match[8]) + tsp_min,
             "duration": float(match[9]),
             "stream_id": -1
         })
@@ -99,11 +119,11 @@ def parse_conv(layer, tshark_output):
     return {layer: data}
 
 
-def process_layer(layer, pcap_chunk):
+def process_layer(layer, pcap_chunk, tsp_min):
     """하나의 레이어를 처리하는 함수 (멀티스레딩용)"""
     try:
         tshark_output = extract_conv(layer, pcap_chunk)
-        convs = parse_conv(layer, tshark_output)
+        convs = parse_conv(layer, tshark_output, tsp_min)
         return layer, convs
     except Exception as e:
         print(f"Error processing {pcap_chunk} for {layer}: {e}")
@@ -115,9 +135,11 @@ def process_pcap_chunk(pcap_chunk):
     layers = ["eth", "ip", "ipv6", "tcp", "udp"]
     result = {}
 
+    tsp_min = extract_timestamp(pcap_chunk)
+
     # 각 레이어에 대해 멀티스레딩을 사용
     with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(process_layer, layer, pcap_chunk) for layer in layers]
+        futures = [executor.submit(process_layer, layer, pcap_chunk, tsp_min) for layer in layers]
 
     # 각 스레드의 결과를 합침
     for future in futures:
@@ -125,11 +147,12 @@ def process_pcap_chunk(pcap_chunk):
         if convs:
             result[layer] = convs[layer]
 
-    return result
+    
+    return result, tsp_min
 
 
 def analyze_pcap_file(pcap_file, output_folder):
-    """하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기 (멀티프로세싱 + 멀티스레딩)"""
+    """하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기"""
     print(f"Splitting {pcap_file}...")
 
     split_dir = os.path.join(output_folder, "split")
@@ -139,12 +162,16 @@ def analyze_pcap_file(pcap_file, output_folder):
         print(f"분할된 파일이 없습니다: {pcap_file}")
         return
 
-    # 멀티스레딩을 사용하여 각 분할된 pcap 파일을 동시에 처리
+    # 🔹 `ThreadPoolExecutor`를 사용하여 멀티스레딩 처리
+    results = []
+    tsp_list = []
     with Pool(processes=cpu_count()) as pool:
-        results = pool.map(process_pcap_chunk, split_pcaps)
+        results_list = pool.map(process_pcap_chunk, split_pcaps)
 
-    # 분석 결과 병합
-    merged_results = merge_results(results)
+    # 결과를 두 개의 리스트로 분리
+    results, tsp_list = zip(*results_list)
+
+    merged_results = merge_results(results, tsp_list[0])
 
     output_file = os.path.join(output_folder, f"{os.path.basename(pcap_file)}.json")
     with open(output_file, 'w') as json_file:
@@ -153,11 +180,8 @@ def analyze_pcap_file(pcap_file, output_folder):
     shutil.rmtree(split_dir, ignore_errors=True)
 
 
-def merge_results(all_results):
+def merge_results(all_results, tsp_min):
     merged_data = {layer: {} for layer in ["eth", "ip", "ipv6", "tcp", "udp"]}
-
-    max_rel = {layer: 0 for layer in ["eth", "ip", "ipv6", "tcp", "udp"]}
-    previous_max_rel_start = {layer: 0 for layer in ["eth", "ip", "ipv6", "tcp", "udp"]} 
 
     # 리스트 안에 여러 딕셔너리가 있는 경우 해결
     for result in all_results:
@@ -166,12 +190,6 @@ def merge_results(all_results):
                 merged_data[layer] = {}
 
             for conv in conversations:
-                if conv["rel_start"] == 0:
-                    max_rel[layer] +=  previous_max_rel_start[layer]
-                    previous_max_rel_start[layer] = 0
-                    if layer in "eth":
-                        print(max_rel)
-
                 # 'tcp' 또는 'udp'일 경우, port 정보를 포함한 key 생성
                 if layer in ["tcp", "udp"]:
                     key = tuple(sorted([conv["address A"], conv["port A"], conv["address B"], conv["port B"]]))
@@ -183,7 +201,7 @@ def merge_results(all_results):
                 if key not in merged_data[layer]:
                     merged_data[layer][key] = {
                         **conv.copy(),  # 전체 데이터를 복사
-                        "rel_start": conv["rel_start"] + max_rel[layer],  # rel_start는 따로 처리
+                        "rel_start": conv["rel_start"] - tsp_min,  # rel_start는 따로 처리
                     }
 
                 else:
@@ -207,9 +225,11 @@ def merge_results(all_results):
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
-                    existing["duration"] = existing["duration"] + conv["duration"] + conv["rel_start"]
 
-                previous_max_rel_start[layer] = max(conv["rel_start"], previous_max_rel_start[layer])
+                    if layer in ["tcp", "udp"]:
+                        existing["duration"] += conv["duration"]
+                    else:
+                        existing["duration"] = conv["duration"] + conv["rel_start"] - tsp_min - existing["rel_start"]
 
     # stream_id 재정렬
     for layer in merged_data:
@@ -222,7 +242,7 @@ def merge_results(all_results):
 
 
 def analyze_pcap_files(input_folder, output_folder):
-    """PCAP 및 PCAPNG 파일 단위로 순차적으로 처리하는 함수"""
+    """PCAP 및 PCAPNG 파일 단위로 멀티프로세싱을 수행하는 함수"""
     pcap_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith((".pcap", ".pcapng"))]
 
     if not pcap_files:
