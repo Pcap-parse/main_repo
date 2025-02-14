@@ -225,11 +225,7 @@ def merge_results(all_results, tsp_min):
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
-
-                    if layer in ["tcp", "udp"]:
-                        existing["duration"] += conv["duration"]
-                    else:
-                        existing["duration"] = conv["duration"] + conv["rel_start"] - tsp_min - existing["rel_start"]
+                    existing["duration"] = conv["duration"] + conv["rel_start"] - tsp_min - existing["rel_start"]
 
     # stream_id 재정렬
     for layer in merged_data:
