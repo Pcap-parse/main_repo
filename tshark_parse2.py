@@ -87,15 +87,15 @@ def parse_conv(layer, tshark_output, tsp_min):
             src_ip, src_port = src_ip.rsplit(":", 1)
             dst_ip, dst_port = dst_ip.rsplit(":", 1)
             conversation = {
-                "address A": src_ip,
-                "port A": src_port,
-                "address B": dst_ip,
-                "port B": dst_port
+                "address_A": src_ip,
+                "port_A": src_port,
+                "address_B": dst_ip,
+                "port_B": dst_port
             }
         else:
             conversation = {
-                "address A": src_ip,
-                "address B": dst_ip
+                "address_A": src_ip,
+                "address_B": dst_ip
             }
 
         conversation.update({
@@ -185,10 +185,10 @@ def merge_results(all_results, tsp_min):
             for conv in conversations:
                 # 'tcp' 또는 'udp'일 경우, port 정보를 포함한 key 생성
                 if layer in ["tcp", "udp"]:
-                    key = tuple(sorted([conv["address A"], conv["port A"], conv["address B"], conv["port B"]]))
+                    key = tuple(sorted([conv["address_A"], conv["port_A"], conv["address_B"], conv["port_B"]]))
                 else:
                     # 다른 레이어일 경우, 포트 정보 없이 address A, address B만 비교
-                    key = tuple(sorted([conv["address A"], conv["address B"]]))
+                    key = tuple(sorted([conv["address_A"], conv["address_B"]]))
 
                 # 대화가 처음이면 복사해서 추가, 기존에 있으면 데이터 병합
                 if key not in merged_data[layer]:
@@ -201,8 +201,8 @@ def merge_results(all_results, tsp_min):
                     existing = merged_data[layer][key]
 
                     # address A, address B가 바뀌었을 경우 처리
-                    if (conv["address A"], conv.get("port A", "")) == (existing["address B"], existing.get("port B", "")) and \
-                       (conv["address B"], conv.get("port B", "")) == (existing["address A"], existing.get("port A", "")):
+                    if (conv["address_A"], conv.get("port_A", "")) == (existing["address_B"], existing.get("port_B", "")) and \
+                       (conv["address_B"], conv.get("port_B", "")) == (existing["address_A"], existing.get("port_A", "")):
                         # 바뀐 경우에는 bytes_atob, packets_atob와 bytes_btoa, packets_btoa를 교환해서 합침
                         existing["bytes_atob"] += conv["bytes_btoa"]
                         existing["bytes_btoa"] += conv["bytes_atob"]
