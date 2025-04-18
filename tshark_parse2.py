@@ -8,10 +8,9 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
 
-
+# tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(layer, pcap_file):
-    """tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출"""
-    program = "C:\\Program Files\\Wireshark\\tshark.exe"
+    program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
 
     command = [
         program,
@@ -48,9 +47,8 @@ def extract_timestamp(pcap_file):
 
     return float(first_timestamp)
 
-
+# editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
 def split_pcap(input_file, output_dir, chunk_size=1000000):
-    """editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할"""
     program = "C:\\Program Files\\Wireshark\\editcap.exe"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -69,16 +67,14 @@ def split_pcap(input_file, output_dir, chunk_size=1000000):
     split_files = glob(os.path.join(output_dir, f"{base_name_no_ext}_*"))
     return split_files
 
-
+# '10 MB', '5 kB' 같은 문자열을 바이트 단위 정수로 변환
 def change_byte(bytes):
-    """'10 MB', '5 kB' 같은 문자열을 바이트 단위 정수로 변환"""
     data = bytes.split()
     unit_map = {"bytes": 1, "kB": 1024, "MB": 1024**2, "GB": 1024**3}
     return int(data[0].replace(",", "")) * unit_map[data[1]]
 
-
+# tshark 출력 결과를 JSON 데이터로 변환
 def parse_conv(layer, tshark_output, tsp_min):
-    """tshark 출력 결과를 JSON 데이터로 변환"""
     pattern = re.compile(
         r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)'
     )
@@ -91,15 +87,15 @@ def parse_conv(layer, tshark_output, tsp_min):
             src_ip, src_port = src_ip.rsplit(":", 1)
             dst_ip, dst_port = dst_ip.rsplit(":", 1)
             conversation = {
-                "address A": src_ip,
-                "port A": src_port,
-                "address B": dst_ip,
-                "port B": dst_port
+                "address_A": src_ip,
+                "port_A": src_port,
+                "address_B": dst_ip,
+                "port_B": dst_port
             }
         else:
             conversation = {
-                "address A": src_ip,
-                "address B": dst_ip
+                "address_A": src_ip,
+                "address_B": dst_ip
             }
 
         conversation.update({
@@ -118,9 +114,8 @@ def parse_conv(layer, tshark_output, tsp_min):
 
     return {layer: data}
 
-
+# 하나의 레이어를 처리하는 함수 (멀티스레딩용)
 def process_layer(layer, pcap_chunk, tsp_min):
-    """하나의 레이어를 처리하는 함수 (멀티스레딩용)"""
     try:
         tshark_output = extract_conv(layer, pcap_chunk)
         convs = parse_conv(layer, tshark_output, tsp_min)
@@ -129,9 +124,8 @@ def process_layer(layer, pcap_chunk, tsp_min):
         print(f"Error processing {pcap_chunk} for {layer}: {e}")
         return layer, {}
 
-
+# 하나의 pcap 조각을 분석하는 함수 (멀티스레딩)
 def process_pcap_chunk(pcap_chunk):
-    """하나의 pcap 조각을 분석하는 함수 (멀티스레딩)"""
     layers = ["eth", "ip", "ipv6", "tcp", "udp"]
     result = {}
 
@@ -150,9 +144,8 @@ def process_pcap_chunk(pcap_chunk):
     
     return result, tsp_min
 
-
+# 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
 def analyze_pcap_file(pcap_file, output_folder):
-    """하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기"""
     print(f"Splitting {pcap_file}...")
 
     split_dir = os.path.join(output_folder, "split")
@@ -162,7 +155,7 @@ def analyze_pcap_file(pcap_file, output_folder):
         print(f"분할된 파일이 없습니다: {pcap_file}")
         return
 
-    # 🔹 `ThreadPoolExecutor`를 사용하여 멀티스레딩 처리
+    # 멀티프로세싱을 사용하여 분할된 pcap 파일 처리
     results = []
     tsp_list = []
     with Pool(processes=cpu_count()) as pool:
@@ -192,10 +185,10 @@ def merge_results(all_results, tsp_min):
             for conv in conversations:
                 # 'tcp' 또는 'udp'일 경우, port 정보를 포함한 key 생성
                 if layer in ["tcp", "udp"]:
-                    key = tuple(sorted([conv["address A"], conv["port A"], conv["address B"], conv["port B"]]))
+                    key = tuple(sorted([conv["address_A"], conv["port_A"], conv["address_B"], conv["port_B"]]))
                 else:
                     # 다른 레이어일 경우, 포트 정보 없이 address A, address B만 비교
-                    key = tuple(sorted([conv["address A"], conv["address B"]]))
+                    key = tuple(sorted([conv["address_A"], conv["address_B"]]))
 
                 # 대화가 처음이면 복사해서 추가, 기존에 있으면 데이터 병합
                 if key not in merged_data[layer]:
@@ -208,8 +201,8 @@ def merge_results(all_results, tsp_min):
                     existing = merged_data[layer][key]
 
                     # address A, address B가 바뀌었을 경우 처리
-                    if (conv["address A"], conv.get("port A", "")) == (existing["address B"], existing.get("port B", "")) and \
-                       (conv["address B"], conv.get("port B", "")) == (existing["address A"], existing.get("port A", "")):
+                    if (conv["address_A"], conv.get("port_A", "")) == (existing["address_B"], existing.get("port_B", "")) and \
+                       (conv["address_B"], conv.get("port_B", "")) == (existing["address_A"], existing.get("port_A", "")):
                         # 바뀐 경우에는 bytes_atob, packets_atob와 bytes_btoa, packets_btoa를 교환해서 합침
                         existing["bytes_atob"] += conv["bytes_btoa"]
                         existing["bytes_btoa"] += conv["bytes_atob"]
@@ -236,9 +229,8 @@ def merge_results(all_results, tsp_min):
 
     return merged_data
 
-
+# PCAP 및 PCAPNG 파일 단위로 멀티프로세싱을 수행하는 함수
 def analyze_pcap_files(input_folder, output_folder):
-    """PCAP 및 PCAPNG 파일 단위로 멀티프로세싱을 수행하는 함수"""
     pcap_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith((".pcap", ".pcapng"))]
 
     if not pcap_files:
@@ -251,8 +243,8 @@ def analyze_pcap_files(input_folder, output_folder):
 
 
 if __name__ == "__main__":
-    input_folder = "D:\\script\\wireshark\\pcaps"
-    output_folder = "D:\\script\\wireshark\\pcap_results"
+    input_folder = "D:\\script\\wireshark\\pcaps"   # pcap 파일 모아놓은 폴더 경로
+    output_folder = "D:\\script\\wireshark\\pcap_results" # 결과 파일 저장 폴더 경로
     os.makedirs(output_folder, exist_ok=True)
 
     start = datetime.now()
