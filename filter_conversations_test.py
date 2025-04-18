@@ -1,6 +1,7 @@
 import json
 import re
 import operator as op
+import os
 
 # 연산자 우선순위 설정
 OPERATOR_PRECEDENCE = {
@@ -107,23 +108,31 @@ def filter_data(data, condition_str):
 #         print("조건에 맞는 데이터가 없습니다.")
 
 def save_filtered_data(filtered_data, output_file):
-    with open(output_file, 'w') as file:
+    filtered_file = "D:\\script\\wireshark\\pcap_parse"
+    os.makedirs(filtered_file, exist_ok=True)
+
+    # 파일 전체 경로 생성
+    output_path = os.path.join(filtered_file, output_file)
+
+    with open(output_path, 'w') as file:
         json.dump(filtered_data, file, indent=4)
     print(f"필터링된 데이터가 '{output_file}'에 저장되었습니다.")
 
 def main():
-    file_path = input("JSON 파일 경로를 입력하세요: ")
-    data = load_json(file_path)
+    file_path = "D:\\script\\wireshark\\pcap_results\\"
+    file_name = input("JSON 파일 명을 입력하세요(확장자 포함): ")
+    data = load_json(file_path+file_name)
     conditions_input = input("필터링할 조건을 입력하세요: ")
+    conditions_input = re.sub(r"(\'|\")","",conditions_input)
     filtered_data = filter_data(data, conditions_input)
 
     # 데이터 출력
     # display_filtered_data(filtered_data)
 
-    save_option = input("필터링된 데이터를 파일에 저장할까요? (y/n): ")
-    if save_option.lower() == 'y':
-        output_file = input("저장할 파일 경로를 입력하세요: ")
-        save_filtered_data(filtered_data, output_file)
+    # save_option = input("필터링된 데이터를 파일에 저장할까요? (y/n): ")
+    # if save_option.lower() == 'y':
+    output_file = input("저장할 JSON 파일 명을 입력하세요(확장자 포함): ")
+    save_filtered_data(filtered_data, output_file)
 
 if __name__ == "__main__":
     main()
