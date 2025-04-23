@@ -11,14 +11,21 @@ import shutil
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(layer, pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
-    filter_pro = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp)"
+    filter_pkt = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp)"
 
     command = [
         program,
         "-r", pcap_file, 
-        "-2", "-R", filter_pro,
-        "-q", 
-        "-z", f"conv,{layer}",
+        "-Y", filter_pkt + f"&& {layer}.srcport",
+        "-T", "fields",
+        "-e", "ip.src",
+        "-e", "ipv6.src",
+        "-e", f"{layer}.srcport",
+        "-e", "ip.dst",
+        "-e", "ipv6.dst",
+        "-e", f"{layer}.dstport",
+        "-e", "frame.len",
+        "-e", "_ws.col.Protocol",
         "-o", "nameres.mac_name:FALSE"
     ]
 
@@ -75,42 +82,38 @@ def change_byte(bytes):
     unit_map = {"bytes": 1, "kB": 1024, "MB": 1024**2, "GB": 1024**3}
     return int(data[0].replace(",", "")) * unit_map[data[1]]
 
+# ip주소 종료 구분
+def get_valid_ip(ipv4, ipv6):
+    return ipv4 if ipv4 else ipv6
+
 # tshark 출력 결과를 JSON 데이터로 변환
 def parse_conv(layer, tshark_output, tsp_min):
-    pattern = re.compile(
-        r'([0-9a-fA-F.:]+(?:\:\d+)?) +<-> +([0-9a-fA-F.:]+(?:\:\d+)?) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+) +([\d,]+ (?:GB|MB|kB|bytes)) +([\d,]+) +([\d,]+ (?:GB|MB|kB|bytes)) +(\d+.\d+) +(\d+.\d+)'
-    )
-
     data = []
-    for match in pattern.findall(tshark_output):
-        src_ip, dst_ip = match[0], match[1]
+    for line in tshark_output.strip().split('\n'):
+        fields = line.strip().split('\t')
+        if len(fields) != 8:
+            continue
 
-        if layer in ["tcp", "udp"]:
-            src_ip, src_port = src_ip.rsplit(":", 1)
-            dst_ip, dst_port = dst_ip.rsplit(":", 1)
-            conversation = {
-                "address_A": src_ip,
-                "port_A": src_port,
-                "address_B": dst_ip,
-                "port_B": dst_port
-            }
-        else:
-            conversation = {
-                "address_A": src_ip,
-                "address_B": dst_ip
-            }
+        src_ip = get_valid_ip(fields[0], fields[1])
+        dst_ip = get_valid_ip(fields[3], fields[4])
 
-        conversation.update({
-            "bytes": change_byte(match[7]),
-            "bytes_atob": change_byte(match[5]),
-            "bytes_btoa": change_byte(match[3]),
-            "packets": int(match[6]),
-            "packets_atob": int(match[4]),
-            "packets_btoa": int(match[2]),
-            "rel_start": float(match[8]) + tsp_min,
-            "duration": float(match[9]),
-            "stream_id": -1
-        })
+        conversation = {
+            "address_A": src_ip,
+            "port_A": int(fields[2]),
+            "address_B": dst_ip,
+            "port_B": int(fields[5]),
+            "bytes": int(fields[6]),
+            "packets": 0,
+            "protocol": fields[7]
+        }
+
+        # conversation.update({
+        #     "bytes_atob": change_byte(match[5]),
+        #     "bytes_btoa": change_byte(match[3]),
+        #     "packets_atob": int(match[4]),
+        #     "packets_btoa": int(match[2]),
+        #     "stream_id": -1
+        # })
 
         data.append(conversation)
 
@@ -168,7 +171,7 @@ def analyze_pcap_file(pcap_file, output_folder):
 
     merged_results = merge_results(results, tsp_list[0])
 
-    output_file = os.path.join(output_folder, f"{os.path.basename(pcap_file)}.json")
+    output_file = os.path.join(output_folder, f"{os.path.basename(pcap_file)}_test.json")
     with open(output_file, 'w') as json_file:
         json.dump(merged_results, json_file, indent=4)
 
@@ -185,49 +188,49 @@ def merge_results(all_results, tsp_min):
                 merged_data[layer] = {}
 
             for conv in conversations:
-                # 'tcp' 또는 'udp'일 경우, port 정보를 포함한 key 생성
-                if layer in ["tcp", "udp"]:
-                    key = tuple(sorted([conv["address_A"], conv["port_A"], conv["address_B"], conv["port_B"]]))
-                else:
-                    # 다른 레이어일 경우, 포트 정보 없이 address A, address B만 비교
-                    key = tuple(sorted([conv["address_A"], conv["address_B"]]))
+                key = tuple(sorted([(conv["address_A"], conv["port_A"]), (conv["address_B"], conv["port_B"])]))
 
                 # 대화가 처음이면 복사해서 추가, 기존에 있으면 데이터 병합
                 if key not in merged_data[layer]:
                     merged_data[layer][key] = {
                         **conv.copy(),  # 전체 데이터를 복사
-                        "rel_start": conv["rel_start"] - tsp_min,  # rel_start는 따로 처리
+                        # "rel_start": conv["rel_start"] - tsp_min,  # rel_start는 따로 처리
                     }
 
                 else:
                     existing = merged_data[layer][key]
 
-                    # address A, address B가 바뀌었을 경우 처리
-                    if (conv["address_A"], conv.get("port_A", "")) == (existing["address_B"], existing.get("port_B", "")) and \
-                       (conv["address_B"], conv.get("port_B", "")) == (existing["address_A"], existing.get("port_A", "")):
-                        # 바뀐 경우에는 bytes_atob, packets_atob와 bytes_btoa, packets_btoa를 교환해서 합침
-                        existing["bytes_atob"] += conv["bytes_btoa"]
-                        existing["bytes_btoa"] += conv["bytes_atob"]
-                        existing["packets_atob"] += conv["packets_btoa"]
-                        existing["packets_btoa"] += conv["packets_atob"]
-                    else:
-                        # 바뀌지 않은 경우는 기존 방식대로 합침
-                        existing["bytes_atob"] += conv["bytes_atob"]
-                        existing["bytes_btoa"] += conv["bytes_btoa"]
-                        existing["packets_atob"] += conv["packets_atob"]
-                        existing["packets_btoa"] += conv["packets_btoa"]
+                    # # address A, address B가 바뀌었을 경우 처리
+                    # if (conv["address_A"], conv.get("port_A", "")) == (existing["address_B"], existing.get("port_B", "")) and \
+                    #    (conv["address_B"], conv.get("port_B", "")) == (existing["address_A"], existing.get("port_A", "")):
+                    #     # 바뀐 경우에는 bytes_atob, packets_atob와 bytes_btoa, packets_btoa를 교환해서 합침
+                    #     existing["bytes_atob"] += conv["bytes_btoa"]
+                    #     existing["bytes_btoa"] += conv["bytes_atob"]
+                    #     existing["packets_atob"] += conv["packets_btoa"]
+                    #     existing["packets_btoa"] += conv["packets_atob"]
+                    # else:
+                    #     # 바뀌지 않은 경우는 기존 방식대로 합침
+                    #     existing["bytes_atob"] += conv["bytes_atob"]
+                    #     existing["bytes_btoa"] += conv["bytes_btoa"]
+                    #     existing["packets_atob"] += conv["packets_atob"]
+                    #     existing["packets_btoa"] += conv["packets_btoa"]
 
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
-                    existing["duration"] = conv["duration"] + conv["rel_start"] - tsp_min - existing["rel_start"]
+                    # existing["duration"] = conv["duration"] + conv["rel_start"] - tsp_min - existing["rel_start"]
 
     # stream_id 재정렬
+    # for layer in merged_data:
+    #     sorted_convs = sorted(merged_data[layer].values(), key=lambda x: x["rel_start"])
+    #     for i, conv in enumerate(sorted_convs):
+    #         conv["stream_id"] = i
+    #     merged_data[layer] = sorted_convs  # 딕셔너리를 리스트로 변환
+
+    # merged_data의 value가 dict인 경우, list로 변환
     for layer in merged_data:
-        sorted_convs = sorted(merged_data[layer].values(), key=lambda x: x["rel_start"])
-        for i, conv in enumerate(sorted_convs):
-            conv["stream_id"] = i
-        merged_data[layer] = sorted_convs  # 딕셔너리를 리스트로 변환
+        if isinstance(merged_data[layer], dict):
+            merged_data[layer] = list(merged_data[layer].values())
 
     return merged_data
 
