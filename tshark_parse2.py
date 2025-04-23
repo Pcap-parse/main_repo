@@ -11,12 +11,12 @@ import shutil
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(layer, pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
-    filter_pro = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp)"
+    filter_pkt = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp)"
 
     command = [
         program,
         "-r", pcap_file, 
-        "-2", "-R", filter_pro,
+        "-2", "-R", filter_pkt,
         "-q", 
         "-z", f"conv,{layer}",
         "-o", "nameres.mac_name:FALSE"
@@ -85,20 +85,14 @@ def parse_conv(layer, tshark_output, tsp_min):
     for match in pattern.findall(tshark_output):
         src_ip, dst_ip = match[0], match[1]
 
-        if layer in ["tcp", "udp"]:
-            src_ip, src_port = src_ip.rsplit(":", 1)
-            dst_ip, dst_port = dst_ip.rsplit(":", 1)
-            conversation = {
-                "address_A": src_ip,
-                "port_A": src_port,
-                "address_B": dst_ip,
-                "port_B": dst_port
-            }
-        else:
-            conversation = {
-                "address_A": src_ip,
-                "address_B": dst_ip
-            }
+        src_ip, src_port = src_ip.rsplit(":", 1)
+        dst_ip, dst_port = dst_ip.rsplit(":", 1)
+        conversation = {
+            "address_A": src_ip,
+            "port_A": src_port,
+            "address_B": dst_ip,
+            "port_B": dst_port
+        }
 
         conversation.update({
             "bytes": change_byte(match[7]),
@@ -185,12 +179,7 @@ def merge_results(all_results, tsp_min):
                 merged_data[layer] = {}
 
             for conv in conversations:
-                # 'tcp' 또는 'udp'일 경우, port 정보를 포함한 key 생성
-                if layer in ["tcp", "udp"]:
-                    key = tuple(sorted([conv["address_A"], conv["port_A"], conv["address_B"], conv["port_B"]]))
-                else:
-                    # 다른 레이어일 경우, 포트 정보 없이 address A, address B만 비교
-                    key = tuple(sorted([conv["address_A"], conv["address_B"]]))
+                key = tuple(sorted([conv["address_A"], conv["port_A"], conv["address_B"], conv["port_B"]]))
 
                 # 대화가 처음이면 복사해서 추가, 기존에 있으면 데이터 병합
                 if key not in merged_data[layer]:
