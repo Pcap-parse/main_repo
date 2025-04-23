@@ -11,10 +11,12 @@ import shutil
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(layer, pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
+    filter_pro = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp)"
 
     command = [
         program,
         "-r", pcap_file, 
+        "-2", "-R", filter_pro,
         "-q", 
         "-z", f"conv,{layer}",
         "-o", "nameres.mac_name:FALSE"
@@ -126,7 +128,7 @@ def process_layer(layer, pcap_chunk, tsp_min):
 
 # 하나의 pcap 조각을 분석하는 함수 (멀티스레딩)
 def process_pcap_chunk(pcap_chunk):
-    layers = ["eth", "ip", "ipv6", "tcp", "udp"]
+    layers = ["tcp", "udp"]
     result = {}
 
     tsp_min = extract_timestamp(pcap_chunk)
@@ -174,7 +176,7 @@ def analyze_pcap_file(pcap_file, output_folder):
 
 
 def merge_results(all_results, tsp_min):
-    merged_data = {layer: {} for layer in ["eth", "ip", "ipv6", "tcp", "udp"]}
+    merged_data = {layer: {} for layer in ["tcp", "udp"]}
 
     # 리스트 안에 여러 딕셔너리가 있는 경우 해결
     for result in all_results:
