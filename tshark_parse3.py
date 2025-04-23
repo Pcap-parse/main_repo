@@ -103,7 +103,7 @@ def parse_conv(layer, tshark_output, tsp_min):
             "address_B": dst_ip,
             "port_B": int(fields[5]),
             "bytes": int(fields[6]),
-            "packets": 0,
+            "packets": 1,
             "protocol": fields[7]
         }
 
