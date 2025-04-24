@@ -7,23 +7,26 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
+from numba import jit
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
-def extract_conv(layer, pcap_file):
+def extract_conv(pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
     filter_pkt = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp)"
 
     command = [
         program,
         "-r", pcap_file, 
-        "-Y", filter_pkt + f"&& {layer}.srcport",
+        "-Y", filter_pkt + f"&& (tcp.srcport || udp.srcport)",
         "-T", "fields",
         "-e", "ip.src",
         "-e", "ipv6.src",
-        "-e", f"{layer}.srcport",
+        "-e", "tcp.srcport",
+        "-e", "udp.srcport",
         "-e", "ip.dst",
         "-e", "ipv6.dst",
-        "-e", f"{layer}.dstport",
+        "-e", "tcp.dstport",
+        "-e", "udp.dstport",
         "-e", "frame.len",
         "-e", "_ws.col.Protocol",
         "-o", "nameres.mac_name:FALSE"
@@ -32,29 +35,10 @@ def extract_conv(layer, pcap_file):
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     if result.returncode != 0:
-        raise Exception(f"Layer {layer} Error: {result.stderr}")
+        raise Exception(f"Error: {result.stderr}")
     
     return result.stdout
 
-
-def extract_timestamp(pcap_file):
-    program = "C:\\Program Files\\Wireshark\\tshark.exe"
-    command = [
-        program, 
-        "-r", pcap_file, 
-        "-T", "fields", 
-        "-e", "frame.time_epoch", 
-        "-c", "1"  # 첫 번째 패킷만 가져오기
-    ]
-
-    tsp = subprocess.run(command, stdout=subprocess.PIPE, text=True)
-    
-    if tsp.returncode != 0:
-        raise Exception(f"{tsp.stderr}")
-    
-    first_timestamp = tsp.stdout.strip()  # 첫 번째 타임스탬프 반환
-
-    return float(first_timestamp)
 
 # editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
 def split_pcap(input_file, output_dir, chunk_size=1000000):
@@ -82,72 +66,62 @@ def change_byte(bytes):
     unit_map = {"bytes": 1, "kB": 1024, "MB": 1024**2, "GB": 1024**3}
     return int(data[0].replace(",", "")) * unit_map[data[1]]
 
-# ip주소 종료 구분
-def get_valid_ip(ipv4, ipv6):
-    return ipv4 if ipv4 else ipv6
 
 # tshark 출력 결과를 JSON 데이터로 변환
-def parse_conv(layer, tshark_output, tsp_min):
-    data = []
-    for line in tshark_output.strip().split('\n'):
+def parse_conv(tshark_output):
+    data = {
+        "tcp": [],
+        "udp": []
+    }
+
+    for line in tshark_output.strip().splitlines():
         fields = line.strip().split('\t')
-        if len(fields) != 8:
+        if len(fields) != 10:
             continue
 
-        src_ip = get_valid_ip(fields[0], fields[1])
-        dst_ip = get_valid_ip(fields[3], fields[4])
+        src_ip = fields[0] if fields[0] else fields[1]
+        dst_ip = fields[4] if fields[4] else fields[5]
 
+        tcp_src, udp_src = fields[2], fields[3]
+        tcp_dst, udp_dst = fields[6], fields[7]
+
+        if tcp_src and tcp_dst:
+            src_port, dst_port = tcp_src, tcp_dst
+            layer="tcp"
+        elif udp_src and udp_dst:
+            src_port, dst_port = udp_src, udp_dst
+            layer="udp"
+        
         conversation = {
             "address_A": src_ip,
-            "port_A": int(fields[2]),
+            "port_A": int(src_port),
             "address_B": dst_ip,
-            "port_B": int(fields[5]),
-            "bytes": int(fields[6]),
+            "port_B": int(dst_port),
+            "bytes": int(fields[8]),
             "packets": 1,
-            "protocol": fields[7]
+            "protocol": fields[9]
         }
 
-        # conversation.update({
-        #     "bytes_atob": change_byte(match[5]),
-        #     "bytes_btoa": change_byte(match[3]),
-        #     "packets_atob": int(match[4]),
-        #     "packets_btoa": int(match[2]),
-        #     "stream_id": -1
-        # })
+        data[layer].append(conversation)
 
-        data.append(conversation)
-
-    return {layer: data}
+    return data
 
 # 하나의 레이어를 처리하는 함수 (멀티스레딩용)
-def process_layer(layer, pcap_chunk, tsp_min):
+def process_layer(pcap_chunk):
     try:
-        tshark_output = extract_conv(layer, pcap_chunk)
-        convs = parse_conv(layer, tshark_output, tsp_min)
-        return layer, convs
+        tshark_output = extract_conv(pcap_chunk)
+        convs = parse_conv(tshark_output)
+        return convs
     except Exception as e:
-        print(f"Error processing {pcap_chunk} for {layer}: {e}")
-        return layer, {}
+        print(f"Error processing {pcap_chunk}: {e}")
+        return {}
 
 # 하나의 pcap 조각을 분석하는 함수 (멀티스레딩)
 def process_pcap_chunk(pcap_chunk):
-    layers = ["tcp", "udp"]
     result = {}
+    result = process_layer(pcap_chunk)
 
-    tsp_min = extract_timestamp(pcap_chunk)
-
-    # 각 레이어에 대해 멀티스레딩을 사용
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(process_layer, layer, pcap_chunk, tsp_min) for layer in layers]
-
-    # 각 스레드의 결과를 합침
-    for future in futures:
-        layer, convs = future.result()
-        if convs:
-            result[layer] = convs[layer]
-
-    
-    return result, tsp_min
+    return result
 
 # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
 def analyze_pcap_file(pcap_file, output_folder):
@@ -166,19 +140,19 @@ def analyze_pcap_file(pcap_file, output_folder):
     with Pool(processes=cpu_count()) as pool:
         results_list = pool.map(process_pcap_chunk, split_pcaps)
 
-    # 결과를 두 개의 리스트로 분리
-    results, tsp_list = zip(*results_list)
+    # # 결과를 두 개의 리스트로 분리
+    # results, tsp_list = zip(*results_list)
 
-    merged_results = merge_results(results, tsp_list[0])
+    merged_results = merge_results(results_list)
 
-    output_file = os.path.join(output_folder, f"{os.path.basename(pcap_file)}_test.json")
+    output_file = os.path.join(output_folder, f"{os.path.basename(pcap_file)}_test2.json")
     with open(output_file, 'w') as json_file:
         json.dump(merged_results, json_file, indent=4)
 
     shutil.rmtree(split_dir, ignore_errors=True)
 
 
-def merge_results(all_results, tsp_min):
+def merge_results(all_results):
     merged_data = {layer: {} for layer in ["tcp", "udp"]}
 
     # 리스트 안에 여러 딕셔너리가 있는 경우 해결
@@ -194,38 +168,14 @@ def merge_results(all_results, tsp_min):
                 if key not in merged_data[layer]:
                     merged_data[layer][key] = {
                         **conv.copy(),  # 전체 데이터를 복사
-                        # "rel_start": conv["rel_start"] - tsp_min,  # rel_start는 따로 처리
                     }
 
                 else:
                     existing = merged_data[layer][key]
 
-                    # # address A, address B가 바뀌었을 경우 처리
-                    # if (conv["address_A"], conv.get("port_A", "")) == (existing["address_B"], existing.get("port_B", "")) and \
-                    #    (conv["address_B"], conv.get("port_B", "")) == (existing["address_A"], existing.get("port_A", "")):
-                    #     # 바뀐 경우에는 bytes_atob, packets_atob와 bytes_btoa, packets_btoa를 교환해서 합침
-                    #     existing["bytes_atob"] += conv["bytes_btoa"]
-                    #     existing["bytes_btoa"] += conv["bytes_atob"]
-                    #     existing["packets_atob"] += conv["packets_btoa"]
-                    #     existing["packets_btoa"] += conv["packets_atob"]
-                    # else:
-                    #     # 바뀌지 않은 경우는 기존 방식대로 합침
-                    #     existing["bytes_atob"] += conv["bytes_atob"]
-                    #     existing["bytes_btoa"] += conv["bytes_btoa"]
-                    #     existing["packets_atob"] += conv["packets_atob"]
-                    #     existing["packets_btoa"] += conv["packets_btoa"]
-
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
-                    # existing["duration"] = conv["duration"] + conv["rel_start"] - tsp_min - existing["rel_start"]
-
-    # stream_id 재정렬
-    # for layer in merged_data:
-    #     sorted_convs = sorted(merged_data[layer].values(), key=lambda x: x["rel_start"])
-    #     for i, conv in enumerate(sorted_convs):
-    #         conv["stream_id"] = i
-    #     merged_data[layer] = sorted_convs  # 딕셔너리를 리스트로 변환
 
     # merged_data의 value가 dict인 경우, list로 변환
     for layer in merged_data:
