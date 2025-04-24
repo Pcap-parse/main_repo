@@ -1,4 +1,3 @@
-import re
 import json
 import subprocess
 import os
@@ -7,17 +6,17 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
-from numba import jit
+
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
-    filter_pkt = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp)"
+    filter_pkt = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp) && (tcp.srcport || udp.srcport)"
 
     command = [
         program,
         "-r", pcap_file, 
-        "-Y", filter_pkt + f"&& (tcp.srcport || udp.srcport)",
+        "-Y", filter_pkt,
         "-T", "fields",
         "-e", "ip.src",
         "-e", "ipv6.src",
@@ -60,12 +59,6 @@ def split_pcap(input_file, output_dir, chunk_size=1000000):
     split_files = glob(os.path.join(output_dir, f"{base_name_no_ext}_*"))
     return split_files
 
-# '10 MB', '5 kB' 같은 문자열을 바이트 단위 정수로 변환
-def change_byte(bytes):
-    data = bytes.split()
-    unit_map = {"bytes": 1, "kB": 1024, "MB": 1024**2, "GB": 1024**3}
-    return int(data[0].replace(",", "")) * unit_map[data[1]]
-
 
 # tshark 출력 결과를 JSON 데이터로 변환
 def parse_conv(tshark_output):
@@ -106,7 +99,8 @@ def parse_conv(tshark_output):
 
     return data
 
-# 하나의 레이어를 처리하는 함수 (멀티스레딩용)
+
+# 하나의 레이어를 처리하는 함수
 def process_layer(pcap_chunk):
     try:
         tshark_output = extract_conv(pcap_chunk)
@@ -116,12 +110,14 @@ def process_layer(pcap_chunk):
         print(f"Error processing {pcap_chunk}: {e}")
         return {}
 
-# 하나의 pcap 조각을 분석하는 함수 (멀티스레딩)
+
+# 하나의 pcap 조각을 분석하는 함수
 def process_pcap_chunk(pcap_chunk):
     result = {}
     result = process_layer(pcap_chunk)
 
     return result
+
 
 # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
 def analyze_pcap_file(pcap_file, output_folder):
@@ -135,13 +131,8 @@ def analyze_pcap_file(pcap_file, output_folder):
         return
 
     # 멀티프로세싱을 사용하여 분할된 pcap 파일 처리
-    results = []
-    tsp_list = []
     with Pool(processes=cpu_count()) as pool:
         results_list = pool.map(process_pcap_chunk, split_pcaps)
-
-    # # 결과를 두 개의 리스트로 분리
-    # results, tsp_list = zip(*results_list)
 
     merged_results = merge_results(results_list)
 
