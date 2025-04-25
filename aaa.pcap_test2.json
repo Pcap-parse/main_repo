@@ -1,0 +1,476 @@
+{
+    "tcp": [
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62944,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 226,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.9043190458916106
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62943,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 192,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.6430281907422053
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62945,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 224,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.264425122045619
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62946,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 268,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.338425436006064
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62947,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 194,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.7392432589961366
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62948,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 228,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.987699707983177
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62949,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 244,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.165006709340199
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62950,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 284,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.289348587532064
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62951,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 244,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.165006709340199
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62952,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 310,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.313685294805205
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62954,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 198,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.7534136647931517
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62955,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 250,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.127757819506148
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62958,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 194,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.8164266088790715
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62959,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 261,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.18160799066871
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62961,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 198,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.6918258457708997
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62962,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 250,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.055320434135152
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62965,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 240,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.144392207648859
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62964,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 196,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.859412851975918
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62968,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 286,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.826566163804292
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62967,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 216,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.8477850456971714
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62970,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 236,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.9095016092774157
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62969,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 192,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.612725160439175
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62971,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 214,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.163229174453495
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62973,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 192,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.6430281907422053
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62972,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 258,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.291832220968897
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62974,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 226,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.9390625909132497
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62975,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 224,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.215755163128323
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62976,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 268,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.353043059870192
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62977,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 194,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.7200124897653675
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62978,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 228,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.987699707983177
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62979,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 192,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.612725160439175
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62980,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 236,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.9095016092774157
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62981,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 194,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.7392432589961366
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62982,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 228,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.9466600363005506
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62984,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 192,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.612725160439175
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62985,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 236,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.9095016092774157
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62986,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 234,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.964663992820882
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62987,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 268,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.124131334243484
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62988,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 234,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.420673546367322
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62989,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 278,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.482085063372656
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62991,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 192,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.6430281907422053
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62992,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 226,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.9508272967956026
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62993,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 192,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.5743482422879564
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62994,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 226,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 3.8619242932505937
+        }
+    ],
+    "udp": [
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 63554,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 252,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.1773307271173685
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 62353,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 252,
+            "packets": 2,
+            "protocol": "DNS",
+            "entropy": 4.192889522265803
+        },
+        {
+            "address_A": "192.168.10.178",
+            "port_A": 49664,
+            "address_B": "192.168.10.1",
+            "port_B": 53,
+            "bytes": 340,
+            "packets": 4,
+            "protocol": "DNS",
+            "entropy": 3.4857956505852132
+        }
+    ]
+}
