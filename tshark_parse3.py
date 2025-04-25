@@ -6,9 +6,10 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
-from collections import Counter
+import numpy as np
 import math
 import binascii
+from functools import lru_cache
 
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
@@ -65,13 +66,20 @@ def split_pcap(input_file, output_dir, chunk_size=1000000):
     return split_files
 
 
+@lru_cache(maxsize=256)
+def fast_log2(x):
+    return math.log2(x)
+
+
 def calculate_entropy(data: bytes) -> float:
     if not data:
         return 0.0
-    counter = Counter(data)
-    total = len(data)
-    entropy = -sum((count / total) * math.log2(count / total) for count in counter.values())
-    return entropy
+
+    arr = np.frombuffer(data, dtype=np.uint8)
+    counts = np.bincount(arr, minlength=256)
+    probs = counts[counts > 0] / len(arr)
+    entropy = -np.sum(probs * np.log2(probs))
+    return float(entropy)
 
 
 # tshark 출력 결과를 JSON 데이터로 변환
