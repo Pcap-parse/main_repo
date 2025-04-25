@@ -6,6 +6,9 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
+from collections import Counter
+import math
+import binascii
 
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
@@ -27,6 +30,8 @@ def extract_conv(pcap_file):
         "-e", "tcp.dstport",
         "-e", "udp.dstport",
         "-e", "frame.len",
+        "-e", "tcp.payload",
+        "-e", "udp.payload",
         "-e", "_ws.col.Protocol",
         "-o", "nameres.mac_name:FALSE"
     ]
@@ -60,6 +65,15 @@ def split_pcap(input_file, output_dir, chunk_size=1000000):
     return split_files
 
 
+def calculate_entropy(data: bytes) -> float:
+    if not data:
+        return 0.0
+    counter = Counter(data)
+    total = len(data)
+    entropy = -sum((count / total) * math.log2(count / total) for count in counter.values())
+    return entropy
+
+
 # tshark 출력 결과를 JSON 데이터로 변환
 def parse_conv(tshark_output):
     data = {
@@ -69,7 +83,8 @@ def parse_conv(tshark_output):
 
     for line in tshark_output.strip().splitlines():
         fields = line.strip().split('\t')
-        if len(fields) != 10:
+        if len(fields) != 12:
+            print(len(fields))
             continue
 
         src_ip = fields[0] if fields[0] else fields[1]
@@ -78,13 +93,19 @@ def parse_conv(tshark_output):
         tcp_src, udp_src = fields[2], fields[3]
         tcp_dst, udp_dst = fields[6], fields[7]
 
+        tcp_payload, udp_payload = fields[9], fields[10]
+
         if tcp_src and tcp_dst:
             src_port, dst_port = tcp_src, tcp_dst
             layer="tcp"
+            binary_data = binascii.unhexlify(tcp_payload)
         elif udp_src and udp_dst:
             src_port, dst_port = udp_src, udp_dst
             layer="udp"
+            binary_data = binascii.unhexlify(udp_payload)
         
+        entropy = calculate_entropy(binary_data)
+
         conversation = {
             "address_A": src_ip,
             "port_A": int(src_port),
@@ -92,7 +113,8 @@ def parse_conv(tshark_output):
             "port_B": int(dst_port),
             "bytes": int(fields[8]),
             "packets": 1,
-            "protocol": fields[9]
+            "protocol": fields[11],
+            "entropy": entropy
         }
 
         data[layer].append(conversation)
@@ -167,10 +189,14 @@ def merge_results(all_results):
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
+                    existing["entropy"] += conv["entropy"]
 
     # merged_data의 value가 dict인 경우, list로 변환
     for layer in merged_data:
         if isinstance(merged_data[layer], dict):
+            for conv in merged_data[layer].values():
+                if conv["packets"] > 0:
+                    conv["entropy"] = conv["entropy"] / conv["packets"]
             merged_data[layer] = list(merged_data[layer].values())
 
     return merged_data
