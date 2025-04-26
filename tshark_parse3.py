@@ -42,53 +42,56 @@ def extract_conv(pcap_file):
         "udp": []
     }
 
-    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
-        for line in proc.stdout:
-            fields = line.strip().split('\t')
-            if len(fields) != 12:
-                continue
-
-            src_ip = fields[0] if fields[0] else fields[1]
-            dst_ip = fields[4] if fields[4] else fields[5]
-
-            tcp_src, udp_src = fields[2], fields[3]
-            tcp_dst, udp_dst = fields[6], fields[7]
-            tcp_payload, udp_payload = fields[9], fields[10]
-
-            try:
-                if tcp_src and tcp_dst:
-                    src_port, dst_port = tcp_src, tcp_dst
-                    layer = "tcp"
-                    binary_data = binascii.unhexlify(tcp_payload) if tcp_payload else b''
-                elif udp_src and udp_dst:
-                    src_port, dst_port = udp_src, udp_dst
-                    layer = "udp"
-                    binary_data = binascii.unhexlify(udp_payload) if udp_payload else b''
-                else:
+    try:
+        with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
+            for line in proc.stdout:
+                fields = line.strip().split('\t')
+                if len(fields) != 12:
                     continue
 
-                entropy = calculate_entropy(binary_data)
+                src_ip = fields[0] if fields[0] else fields[1]
+                dst_ip = fields[4] if fields[4] else fields[5]
 
-                conversation = {
-                    "address_A": src_ip,
-                    "port_A": int(src_port),
-                    "address_B": dst_ip,
-                    "port_B": int(dst_port),
-                    "bytes": int(fields[8]),
-                    "packets": 1,
-                    "protocol": fields[11],
-                    "entropy": entropy
-                }
+                tcp_src, udp_src = fields[2], fields[3]
+                tcp_dst, udp_dst = fields[6], fields[7]
+                tcp_payload, udp_payload = fields[9], fields[10]
 
-                data[layer].append(conversation)
-            except Exception as e:
-                print(f"[!] Error parsing line: {e}")
-                continue
+                try:
+                    if tcp_src and tcp_dst:
+                        src_port, dst_port = tcp_src, tcp_dst
+                        layer = "tcp"
+                        binary_data = binascii.unhexlify(tcp_payload) if tcp_payload else b''
+                    elif udp_src and udp_dst:
+                        src_port, dst_port = udp_src, udp_dst
+                        layer = "udp"
+                        binary_data = binascii.unhexlify(udp_payload) if udp_payload else b''
+                    else:
+                        continue
 
-        stderr = proc.stderr.read()
-        if proc.wait() != 0:
-            raise Exception(f"[!] tshark error: {stderr}")
+                    entropy = calculate_entropy(binary_data)
 
+                    conversation = {
+                        "address_A": src_ip,
+                        "port_A": int(src_port),
+                        "address_B": dst_ip,
+                        "port_B": int(dst_port),
+                        "bytes": int(fields[8]),
+                        "packets": 1,
+                        "protocol": fields[11],
+                        "entropy": entropy
+                    }
+
+                    data[layer].append(conversation)
+                except Exception as e:
+                    print(f"[!] Error parsing line: {e}")
+                    continue
+
+            stderr = proc.stderr.read()
+            if proc.wait() != 0:
+                raise Exception(f"[!] tshark error: {stderr}")
+            
+    except Exception as e:
+        print("에러 발생:", e)
     return data
 
 
