@@ -6,7 +6,7 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
-
+import binascii
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(pcap_file):
@@ -79,13 +79,18 @@ def parse_conv(tshark_output):
 
         tcp_src, udp_src = fields[2], fields[3]
         tcp_dst, udp_dst = fields[6], fields[7]
+        tcp_payload, udp_payload = fields[9], fields[10]
 
         if tcp_src and tcp_dst:
             src_port, dst_port = tcp_src, tcp_dst
             layer="tcp"
+            binary_data = binascii.unhexlify(tcp_payload)
         elif udp_src and udp_dst:
             src_port, dst_port = udp_src, udp_dst
             layer="udp"
+            binary_data = binascii.unhexlify(udp_payload)
+
+        # entropy = 1
         
         conversation = {
             "address_A": src_ip,
@@ -94,7 +99,8 @@ def parse_conv(tshark_output):
             "port_B": int(dst_port),
             "bytes": int(fields[8]),
             "packets": 1,
-            "protocol": fields[11]
+            "protocol": fields[11],
+            # "entropy": entropy
         }
 
         data[layer].append(conversation)
