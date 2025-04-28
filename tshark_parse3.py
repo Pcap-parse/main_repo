@@ -245,14 +245,14 @@ def merge_results(all_results):
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
-                    existing["entropy"] += conv["entropy"]
+                    # existing["entropy"] += conv["entropy"]
 
     # merged_data의 value가 dict인 경우, list로 변환
     for layer in merged_data:
         if isinstance(merged_data[layer], dict):
-            for conv in merged_data[layer].values():
-                if conv["packets"] > 0:
-                    conv["entropy"] = conv["entropy"] / conv["packets"]
+            # for conv in merged_data[layer].values():
+            #     if conv["packets"] > 0:
+            #         conv["entropy"] = conv["entropy"] / conv["packets"]
             merged_data[layer] = list(merged_data[layer].values())
 
     return merged_data
