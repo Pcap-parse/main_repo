@@ -8,7 +8,7 @@ from datetime import datetime
 import shutil
 import math
 # from functools import lru_cache
-import numpy as np
+# import numpy as np
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(pcap_file):
@@ -115,11 +115,18 @@ def calculate_entropy(data: bytes) -> float:
     if not data:
         return 0.0
 
-    arr = np.frombuffer(data, dtype=np.uint8)
-    counts = np.bincount(arr, minlength=256)
-    probs = counts[counts > 0] / len(arr)
-    entropy = -np.sum(probs * np.log2(probs))
-    return float(entropy)
+    counts = [0] * 256
+    for byte in data:
+        counts[byte] += 1
+
+    entropy = 0.0
+    length = len(data)
+    for count in counts:
+        if count > 0:
+            prob = count / length
+            entropy -= prob * math.log2(prob)
+
+    return entropy
 
 # 하나의 레이어를 처리하는 함수
 def process_layer(pcap_chunk):
