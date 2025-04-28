@@ -6,7 +6,9 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
-import binascii
+import math
+from functools import lru_cache
+import numpy as np
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(pcap_file):
@@ -79,16 +81,13 @@ def parse_conv(tshark_output):
 
         tcp_src, udp_src = fields[2], fields[3]
         tcp_dst, udp_dst = fields[6], fields[7]
-        tcp_payload, udp_payload = fields[9], fields[10]
 
         if tcp_src and tcp_dst:
             src_port, dst_port = tcp_src, tcp_dst
             layer="tcp"
-            binary_data = binascii.unhexlify(tcp_payload)
         elif udp_src and udp_dst:
             src_port, dst_port = udp_src, udp_dst
             layer="udp"
-            binary_data = binascii.unhexlify(udp_payload)
 
         # entropy = 1
         
@@ -107,6 +106,20 @@ def parse_conv(tshark_output):
 
     return data
 
+@lru_cache(maxsize=256)
+def fast_log2(x):
+    return math.log2(x)
+
+
+def calculate_entropy(data: bytes) -> float:
+    if not data:
+        return 0.0
+
+    arr = np.frombuffer(data, dtype=np.uint8)
+    counts = np.bincount(arr, minlength=256)
+    probs = counts[counts > 0] / len(arr)
+    entropy = -np.sum(probs * np.log2(probs))
+    return float(entropy)
 
 # 하나의 레이어를 처리하는 함수
 def process_layer(pcap_chunk):
