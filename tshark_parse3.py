@@ -27,6 +27,8 @@ def extract_conv(pcap_file):
         "-e", "tcp.dstport",
         "-e", "udp.dstport",
         "-e", "frame.len",
+        "-e", "tcp.payload",
+        "-e", "udp.payload",
         "-e", "_ws.col.Protocol",
         "-o", "nameres.mac_name:FALSE"
     ]
@@ -69,7 +71,7 @@ def parse_conv(tshark_output):
 
     for line in tshark_output.strip().splitlines():
         fields = line.strip().split('\t')
-        if len(fields) != 10:
+        if len(fields) != 12:
             continue
 
         src_ip = fields[0] if fields[0] else fields[1]
@@ -92,7 +94,7 @@ def parse_conv(tshark_output):
             "port_B": int(dst_port),
             "bytes": int(fields[8]),
             "packets": 1,
-            "protocol": fields[9]
+            "protocol": fields[11]
         }
 
         data[layer].append(conversation)
