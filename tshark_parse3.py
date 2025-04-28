@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
 import math
-from functools import lru_cache
+# from functools import lru_cache
 import numpy as np
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
@@ -106,7 +106,7 @@ def parse_conv(tshark_output):
 
     return data
 
-@lru_cache(maxsize=256)
+# @lru_cache(maxsize=256)
 def fast_log2(x):
     return math.log2(x)
 
