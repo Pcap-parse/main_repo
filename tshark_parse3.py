@@ -111,8 +111,8 @@ def parse_conv(tshark_output):
     return data
 
 @lru_cache(maxsize=256)
-def fast_log2(x):
-    return math.log2(x)
+def fast_log2(count: int, length: int) -> float:
+    return math.log2(count / length)
 
 def calculate_entropy(data: bytes) -> float:
     if not data:
@@ -127,7 +127,7 @@ def calculate_entropy(data: bytes) -> float:
     for count in counts:
         if count > 0:
             prob = count / length
-            entropy -= prob * fast_log2(prob)
+            entropy -= prob * fast_log2(count, length)
 
     return entropy
 
@@ -184,7 +184,10 @@ def merge_results(all_results):
                 merged_data[layer] = {}
 
             for conv in conversations:
-                key = tuple(sorted([(conv["address_A"], conv["port_A"]), (conv["address_B"], conv["port_B"])]))
+                ip_pair = tuple(sorted([(conv["address_A"], conv["port_A"]), (conv["address_B"], conv["port_B"])]))
+                proto = conv["protocol"]
+
+                key = (ip_pair, proto)
 
                 # 대화가 처음이면 복사해서 추가, 기존에 있으면 데이터 병합
                 if key not in merged_data[layer]:
@@ -198,10 +201,14 @@ def merge_results(all_results):
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
+                    existing["entropy"] += conv["entropy"]
 
     # merged_data의 value가 dict인 경우, list로 변환
     for layer in merged_data:
         if isinstance(merged_data[layer], dict):
+            for conv in merged_data[layer].values():
+                if conv["packets"] > 0:
+                    conv["entropy"] = conv["entropy"] / conv["packets"]
             merged_data[layer] = list(merged_data[layer].values())
 
     return merged_data

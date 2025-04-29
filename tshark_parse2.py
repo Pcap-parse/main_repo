@@ -6,7 +6,6 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import shutil
-import numpy as np
 import math
 import binascii
 from functools import lru_cache
@@ -74,19 +73,25 @@ def split_pcap(input_file, output_dir, chunk_size=1000000):
 
 
 @lru_cache(maxsize=256)
-def fast_log2(x):
-    return math.log2(x)
-
+def fast_log2(count: int, length: int) -> float:
+    return math.log2(count / length)
 
 def calculate_entropy(data: bytes) -> float:
     if not data:
         return 0.0
 
-    arr = np.frombuffer(data, dtype=np.uint8)
-    counts = np.bincount(arr, minlength=256)
-    probs = counts[counts > 0] / len(arr)
-    entropy = -np.sum(probs * np.log2(probs))
-    return float(entropy)
+    counts = [0] * 256
+    for byte in data:
+        counts[byte] += 1
+
+    entropy = 0.0
+    length = len(data)
+    for count in counts:
+        if count > 0:
+            prob = count / length
+            entropy -= prob * fast_log2(count, length)
+
+    return entropy
 
 
 # tshark 출력 결과를 JSON 데이터로 변환
@@ -144,25 +149,6 @@ def parse_conv(file_path):
         print(f"Error reading file {file_path}: {e}")
 
     return data
-
-
-# 하나의 레이어를 처리하는 함수
-# def process_layer(pcap_chunk):
-#     try:
-#         tshark_output = extract_conv(pcap_chunk)
-#         convs = parse_conv(tshark_output)
-#         return convs
-#     except Exception as e:
-#         print(f"Error processing {pcap_chunk}: {e}")
-#         return {}
-
-
-# 하나의 pcap 조각을 분석하는 함수
-# def process_pcap_chunk(pcap_chunk):
-#     result = {}
-#     result = process_layer(pcap_chunk)
-
-#     return result
 
 
 # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
