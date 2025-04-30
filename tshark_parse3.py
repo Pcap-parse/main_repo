@@ -32,7 +32,7 @@ def extract_conv(pcap_file):
         "-e", "frame.len",
         "-e", "tcp.payload",
         "-e", "udp.payload",
-        "-e", "tcp.seq",
+        "-e", "tcp.seq_raw",
         "-e", "_ws.col.Protocol",
         "-o", "nameres.mac_name:FALSE"
     ]
@@ -46,7 +46,7 @@ def extract_conv(pcap_file):
 
 
 # editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
-def split_pcap(input_file, output_dir, chunk_size=10000000):
+def split_pcap(input_file, output_dir, chunk_size=100000):
     program = "C:\\Program Files\\Wireshark\\editcap.exe"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -233,9 +233,8 @@ def merge_results(all_results):
 
                 # 대화가 처음이면 복사해서 추가, 기존에 있으면 데이터 병합
                 if key not in merged_data[layer]:
-                    if key not in merged_data[layer]:
-                        conv_copy = {k: v for k, v in conv.items() if k != "seq_num"}
-                        merged_data[layer][key] = conv_copy
+                    conv_copy = {k: v for k, v in conv.items() if k != "seq_num"}
+                    merged_data[layer][key] = conv_copy
 
                 else:
                     existing = merged_data[layer][key]
