@@ -28,6 +28,10 @@ def apply_operator(entry_value, operator, condition_value):
     entry_value = convert_value(entry_value)
     condition_value = convert_value(condition_value)
 
+    if isinstance(entry_value, str) and isinstance(condition_value, str):
+        entry_value = entry_value.lower()
+        condition_value = condition_value.lower()
+
     ops = {
         "==": op.eq,
         "!=": op.ne,
@@ -108,7 +112,7 @@ def filter_data(data, condition_str):
 #         print("조건에 맞는 데이터가 없습니다.")
 
 def save_filtered_data(filtered_data, output_file):
-    filtered_file = "D:\\script\\wireshark\\pcap_parse"
+    filtered_file = "D:\\script\\wireshark\\pcap_parse" # 필터링 결과 저장 경로
     os.makedirs(filtered_file, exist_ok=True)
 
     # 파일 전체 경로 생성
@@ -119,7 +123,7 @@ def save_filtered_data(filtered_data, output_file):
     print(f"필터링된 데이터가 '{output_file}'에 저장되었습니다.")
 
 def main():
-    file_path = "D:\\script\\wireshark\\pcap_results\\"
+    file_path = "D:\\script\\wireshark\\pcap_results\\" # 필터링 대상이 있는 폴더 경로
     file_name = input("JSON 파일 명을 입력하세요(확장자 포함): ")
     data = load_json(file_path+file_name)
     conditions_input = input("필터링할 조건을 입력하세요: ")
@@ -129,8 +133,6 @@ def main():
     # 데이터 출력
     # display_filtered_data(filtered_data)
 
-    # save_option = input("필터링된 데이터를 파일에 저장할까요? (y/n): ")
-    # if save_option.lower() == 'y':
     output_file = input("저장할 JSON 파일 명을 입력하세요(확장자 포함): ")
     save_filtered_data(filtered_data, output_file)
 
