@@ -32,6 +32,7 @@ def extract_conv(pcap_file):
         "-e", "frame.len",
         "-e", "tcp.payload",
         "-e", "udp.payload",
+        "-e", "tcp.seq",
         "-e", "_ws.col.Protocol",
         "-o", "nameres.mac_name:FALSE"
     ]
@@ -45,7 +46,7 @@ def extract_conv(pcap_file):
 
 
 # editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
-def split_pcap(input_file, output_dir, chunk_size=1000000):
+def split_pcap(input_file, output_dir, chunk_size=10000000):
     program = "C:\\Program Files\\Wireshark\\editcap.exe"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -74,7 +75,7 @@ def parse_conv(tshark_output):
 
     for line in tshark_output.strip().splitlines():
         fields = line.strip().split('\t')
-        if len(fields) != 12:
+        if len(fields) != 13:
             continue
 
         src_ip = fields[0] if fields[0] else fields[1]
@@ -94,6 +95,8 @@ def parse_conv(tshark_output):
             binary_data = binascii.unhexlify(udp_payload)
 
         entropy = calculate_entropy(binary_data)
+
+        seq_num = int(fields[11]) if fields[11] else None
         
         conversation = {
             "address_A": src_ip,
@@ -102,8 +105,9 @@ def parse_conv(tshark_output):
             "port_B": int(dst_port),
             "bytes": int(fields[8]),
             "packets": 1,
-            "protocol": fields[11],
-            "entropy": entropy
+            "protocol": fields[12],
+            "entropy": entropy,
+            "seq_num": seq_num
         }
 
         data[layer].append(conversation)
@@ -174,8 +178,36 @@ def analyze_pcap_file(pcap_file, output_folder):
     shutil.rmtree(split_dir, ignore_errors=True)
 
 
+def normalize_protocol(proto):
+    proto = proto.lower()
+
+    if "http" in proto:
+        return "http"
+    elif "dns" in proto:
+        return "dns"
+    elif "ftp" in proto:
+        return "ftp"
+    elif "imap" in proto:
+        return "imap"
+    elif "pop" in proto:
+        return "pop"
+    elif "smtp" in proto:
+        return "smtp"
+    elif "rtsp" in proto:
+        return "rtsp"
+    elif "telnet" in proto:
+        return "telnet"
+    elif "vnc" in proto:
+        return "vnc"
+    elif "snmp" in proto:
+        return "snmp"
+    else:
+        return proto
+    
+
 def merge_results(all_results):
     merged_data = {layer: {} for layer in ["tcp", "udp"]}
+    seen_pkt = set()
 
     # 리스트 안에 여러 딕셔너리가 있는 경우 해결
     for result in all_results:
@@ -185,19 +217,29 @@ def merge_results(all_results):
 
             for conv in conversations:
                 ip_pair = tuple(sorted([(conv["address_A"], conv["port_A"]), (conv["address_B"], conv["port_B"])]))
-                proto = conv["protocol"]
+                proto = normalize_protocol(conv["protocol"])
+                # proto = conv["protocol"]
+                seq = conv["seq_num"]
+                
+                if seq is not None:
+                    check_dup = (ip_pair, proto, seq)
+
+                    if check_dup in seen_pkt:
+                        continue  # 이미 본 패킷이면 무시 (중복 제거)
+
+                    seen_pkt.add(check_dup)
 
                 key = (ip_pair, proto)
 
                 # 대화가 처음이면 복사해서 추가, 기존에 있으면 데이터 병합
                 if key not in merged_data[layer]:
-                    merged_data[layer][key] = {
-                        **conv.copy(),  # 전체 데이터를 복사
-                    }
+                    if key not in merged_data[layer]:
+                        conv_copy = {k: v for k, v in conv.items() if k != "seq_num"}
+                        merged_data[layer][key] = conv_copy
 
                 else:
                     existing = merged_data[layer][key]
-
+                    
                     # 나머지 데이터도 합침
                     existing["bytes"] += conv["bytes"]
                     existing["packets"] += conv["packets"]
