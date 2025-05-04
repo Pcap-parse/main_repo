@@ -28,7 +28,7 @@ class CollectorsResponse(BaseModel):
 
 VALID_INTERFACES = ["Ethernet", "Wi-Fi", "enp3s0"]
 
-@app.post("/api/v1/start", response_model=StartResponse)
+@app.post("/api/v1/tshark", response_model=StartResponse)
 def start_device(req: StartRequest):
     if req.device not in VALID_INTERFACES:
         return StartResponse(success=False, error="interface not found")
