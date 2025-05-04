@@ -25,21 +25,8 @@ class CollectorInfo(BaseModel):
 class CollectorsResponse(BaseModel):
     collectors: List[CollectorInfo]
 
-# --- 임시 메모리 데이터베이스 ---
-collectors = {
-    "collector1": {
-        "name": "collector1",
-        "device": "enp3s0",
-        "version": "1.0.0",
-        "ip": "192.168.0.101",
-        "started": False,
-        "collected_size": 0.0,
-        "start_time": 0.0
-    }
-}
 
 VALID_INTERFACES = ["Ethernet", "Wi-Fi", "enp3s0"]
-# --- API 구현 ---
 
 @app.post("/api/v1/start", response_model=StartResponse)
 def start_device(req: StartRequest):
