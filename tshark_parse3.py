@@ -46,7 +46,7 @@ def extract_conv(pcap_file):
 
 
 # editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
-def split_pcap(input_file, output_dir, chunk_size=100000):
+def split_pcap(input_file, output_dir, chunk_size=500000):
     program = "C:\\Program Files\\Wireshark\\editcap.exe"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -267,7 +267,7 @@ def analyze_pcap_files(input_folder, output_folder):
         analyze_pcap_file(pcap_file, output_folder)
 
 
-if __name__ == "__main__":
+def start():
     input_folder = "D:\\script\\wireshark\\pcaps"   # pcap 파일 모아놓은 폴더 경로
     output_folder = "D:\\script\\wireshark\\pcap_results" # 결과 파일 저장 폴더 경로
     os.makedirs(output_folder, exist_ok=True)
