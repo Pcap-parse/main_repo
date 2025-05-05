@@ -1,5 +1,8 @@
 import re
 import operator as op
+import json
+import os
+from datetime import datetime
 
 OPERATOR_PRECEDENCE = {
     "!": 3,
@@ -89,7 +92,7 @@ def evaluate_postfix(entry, postfix_tokens):
     return stack[0] if stack else False
 
 
-def filter_data(data, condition_str):
+def filtered_data(data, condition_str):
     condition_str = re.sub(r"(\'|\")", "", condition_str)
     tokens = tokenize_condition(condition_str)
     postfix_tokens = convert_to_postfix(tokens)
@@ -101,3 +104,34 @@ def filter_data(data, condition_str):
             filtered_result[key] = filtered_entries
 
     return filtered_result
+
+
+# 필터 적용 함수
+def filter_data(name, condition):
+    # 추출 결과 저장된 경로
+    file_path = os.path.join("D:\\script\\wireshark\\pcap_results", f"{name}.json")
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError("Not Found")
+
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+    # 필터링 적용
+    return filtered_data(data, condition)
+
+
+# 필터 적용 결과 저장 함수
+def save_filtered_data(name, result):
+    # 결과 저장하는 경로
+    output_dir = "D:\\script\\wireshark\\pcap_parse"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 결과 파일 저장 이름
+    output_file = os.path.join(output_dir, f"{name}_filtered_result-{timestamp}.json")
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(result, f, indent=4, ensure_ascii=False)
+
+    print(f"✅ 필터링 결과 저장 완료: {output_file}")
