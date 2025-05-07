@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 from tshark_parse3 import start
-from filter_conversations_test import filter_data
+from filter_conversations_test import filter_data, save_filtered_data, delete_filtered_data, retrieve_filtered_data
 
 app = FastAPI()
 
@@ -54,19 +54,96 @@ def make_response(message: str, **kwargs):
 
 
 # 필터링 적용 api
-@app.get("/api/v1/filter/{name}")
+@app.get("/api/v1/filter/apply/{name}")
 def search_endpoint(name: str, condition: str):
     try:
         # 필터링 적용
-        result = filter_data(name, condition)
+        result, msg, data = filter_data(name, condition)
 
-        return make_response(
-          "filter success",
-          data=result,
-        )
+        if result == True:
+            return make_response(msg, data=data)
+        
+        else:
+            return generate_error_response(404, msg)
 
-    except HTTPException as e:
-        return generate_error_response(e.status_code, e.detail)
+    # except FileNotFoundError as e:
+    #     # 파일이 없는 경우 404 응답
+    #     return generate_error_response(404, str(e))
+    
+    # except HTTPException as e:
+    #     return generate_error_response(e.status_code, e.detail)
+    
+    except Exception as e:
+        return generate_error_response(500, "Internal Server Error")
+    
+
+# 필터링 저장 api
+@app.put("/api/v1/filter/save/{name}")
+def search_endpoint(name: str, condition: str):
+    try:
+        # 필터링 적용
+        result, msg, data = save_filtered_data(name, condition)
+
+        if result == True:
+            return make_response(msg, data=data)
+        
+        else:
+            return generate_error_response(404, msg)
+
+    # except FileNotFoundError as e:
+    #     # 파일이 없는 경우 404 응답
+    #     return generate_error_response(404, str(e))
+    
+    # except HTTPException as e:
+    #     return generate_error_response(e.status_code, e.detail)
+    
+    except Exception as e:
+        return generate_error_response(500, "Internal Server Error")
+    
+
+# 필터링 삭제 api
+@app.delete("/api/v1/filter/delete/{name}")
+def search_endpoint(name: str):
+    try:
+        # 필터링 적용
+        result, msg, data = delete_filtered_data(name)
+
+        if result == True:
+            return make_response(msg, data=data)
+        
+        else:
+            return generate_error_response(404, msg)
+
+    # except FileNotFoundError as e:
+    #     # 파일이 없는 경우 404 응답
+    #     return generate_error_response(404, str(e))
+    
+    # except HTTPException as e:
+    #     return generate_error_response(e.status_code, e.detail)
+    
+    except Exception as e:
+        return generate_error_response(500, "Internal Server Error")
+    
+
+# 명세 조회 api(저장된 정보 조회)
+@app.get("/api/v1/filter/retrieve/{name}")
+def search_endpoint(name: str):
+    try:
+        # 필터링 적용
+        result, msg, data = retrieve_filtered_data(name)
+
+        if result == True:
+            return make_response(msg, data=data)
+        
+        else:
+            return generate_error_response(404, msg)
+
+    # except FileNotFoundError as e:
+    #     # 파일이 없는 경우 404 응답
+    #     return generate_error_response(404, str(e))
+    
+    # except HTTPException as e:
+    #     return generate_error_response(e.status_code, e.detail)
     
     except Exception as e:
         return generate_error_response(500, "Internal Server Error")

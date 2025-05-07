@@ -3,6 +3,7 @@ import operator as op
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
 OPERATOR_PRECEDENCE = {
     "!": 3,
@@ -10,6 +11,11 @@ OPERATOR_PRECEDENCE = {
     "||": 1
 }
 
+load_dotenv()
+
+FILTER_JSON_PATH = os.getenv("FILTER_JSON_PATH")
+json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
+PARSE_JSON_PATH = os.getenv("PARSE_JSON_PATH")
 
 def convert_value(value):
     if isinstance(value, str):
@@ -92,7 +98,17 @@ def evaluate_postfix(entry, postfix_tokens):
     return stack[0] if stack else False
 
 
-def filtered_data(data, condition_str):
+# 필터 값 입력 적용 함수
+def filter_data(name, condition_str):
+
+    file_path = os.path.join(PARSE_JSON_PATH, f"{name}.json")
+
+    if not os.path.exists(file_path):
+        return False, "File Not Found", ""
+
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+        
     condition_str = re.sub(r"(\'|\")", "", condition_str)
     tokens = tokenize_condition(condition_str)
     postfix_tokens = convert_to_postfix(tokens)
@@ -103,35 +119,81 @@ def filtered_data(data, condition_str):
         if filtered_entries:
             filtered_result[key] = filtered_entries
 
-    return filtered_result
+    result = {
+        "filter": condition_str,
+        "result": filtered_result
+    }
+
+    return True, "Success", result
 
 
-# 필터 적용 함수
-def filter_data(name, condition):
-    # 추출 결과 저장된 경로
-    file_path = os.path.join("D:\\script\\wireshark\\pcap_results", f"{name}.json")
+# 필터 적용 결과 저장(or 수정) 함수
+def save_filtered_data(name, condition):
+    # 추가할 데이터
+    new_entry = {
+        "name": name,
+        "filter": condition,
+        "timestamp": datetime.now().isoformat()
+    }
+    data = []
 
-    if not os.path.exists(file_path):
-        raise FileNotFoundError("Not Found")
+    # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
+    if os.path.exists(json_file):
+        with open(json_file , 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if not isinstance(data, list):
+                data = []
+    else:
+        data = []
 
-    with open(file_path, 'r') as file:
-        data = json.load(file)
+    # 동일한 name이 있는지 검사하고 업데이트 또는 추가
+    updated = False
+    for i, item in enumerate(data):
+        if item.get("name") == new_entry["name"]:
+            data[i] = new_entry
+            updated = True
+            break
 
-    # 필터링 적용
-    return filtered_data(data, condition)
+    # 새 항목 추가
+    if not updated:
+        data.append(new_entry)
+
+    # 파일에 저장
+    with open(json_file , 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+    return True, "Success", data
 
 
-# 필터 적용 결과 저장 함수
-def save_filtered_data(name, result):
-    # 결과 저장하는 경로
-    output_dir = "D:\\script\\wireshark\\pcap_parse"
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    os.makedirs(output_dir, exist_ok=True)
+# 명세 조회 함수
+def retrieve_filtered_data(file_name):
+    if os.path.exists(json_file):
+        with open(json_file , 'r', encoding='utf-8') as f:
+            data = json.load(f)
 
-    # 결과 파일 저장 이름
-    output_file = os.path.join(output_dir, f"{name}_filtered_result-{timestamp}.json")
+        for entry in data:
+            if entry.get("name") == file_name:
+                condition = entry.get("filter")
+                break
+        print(condition)
+        return filter_data(file_name, condition)
+    
+    else:
+        return False, "File Not Found", ""
 
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(result, f, indent=4, ensure_ascii=False)
 
-    print(f"✅ 필터링 결과 저장 완료: {output_file}")
+# 명세 삭제 함수
+def delete_filtered_data(file_name):
+    if os.path.exists(json_file):
+        with open(json_file , 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        data = [entry for entry in data if entry.get("name") != file_name]
+
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+        return True, "Success", ""
+    
+    else:
+        return False, "File Not Found", ""
