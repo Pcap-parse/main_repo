@@ -88,12 +88,12 @@ def parse_conv(tshark_output):
             src_port, dst_port = tcp_src, tcp_dst
             layer="tcp"
             binary_data = binascii.unhexlify(tcp_payload)
-            payload_len = int(tcp_payload)
+            payload_len = len(tcp_payload) if tcp_payload else 0
         elif udp_src and udp_dst:
             src_port, dst_port = udp_src, udp_dst
             layer="udp"
             binary_data = binascii.unhexlify(udp_payload)
-            payload_len = int(udp_payload)
+            payload_len = len(udp_payload) if udp_payload else 0
 
         entropy = calculate_entropy(binary_data)
 

@@ -89,16 +89,16 @@ def parse_conv(tshark_output):
             src_port, dst_port = tcp_src, tcp_dst
             layer="tcp"
             binary_data = binascii.unhexlify(tcp_payload)
-            payload_len = int(tcp_payload)
+            payload_len = len(tcp_payload) if tcp_payload else 0
         elif udp_src and udp_dst:
             src_port, dst_port = udp_src, udp_dst
             layer="udp"
             binary_data = binascii.unhexlify(udp_payload)
-            payload_len = int(udp_payload)
+            payload_len = len(udp_payload) if udp_payload else 0
 
         entropy = calculate_entropy(binary_data)
 
-        seq_num = int(fields[11]) if fields[11] else None
+        seq_num = int(fields[10]) if fields[10] else None
         
         conversation = {
             "address_A": src_ip,
@@ -107,7 +107,7 @@ def parse_conv(tshark_output):
             "port_B": int(dst_port),
             "bytes": payload_len,
             "packets": 1,
-            "protocol": fields[12],
+            "protocol": fields[11],
             "entropy": entropy,
             "seq_num": seq_num
         }
@@ -254,7 +254,7 @@ def merge_results(all_results):
             for conv in merged_data[layer].values():
                 if conv["packets"] > 0:
                     conv["entropy"] = conv["entropy"] / conv["packets"]
-                    conv["bytes"] = float(conv["bytes"] / conv["packets"])
+                    #conv["bytes"] = float(conv["bytes"] / conv["packets"])
             merged_data[layer] = list(merged_data[layer].values())
 
     return merged_data
