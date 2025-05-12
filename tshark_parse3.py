@@ -93,7 +93,7 @@ def parse_conv(tshark_output):
             src_port, dst_port = udp_src, udp_dst
             layer="udp"
             binary_data = binascii.unhexlify(udp_payload)
-            payload_len = int(tcp_payload)
+            payload_len = int(udp_payload)
 
         entropy = calculate_entropy(binary_data)
 

@@ -29,7 +29,6 @@ def extract_conv(pcap_file):
         "-e", "ipv6.dst",
         "-e", "tcp.dstport",
         "-e", "udp.dstport",
-        "-e", "frame.len",
         "-e", "tcp.payload",
         "-e", "udp.payload",
         "-e", "tcp.seq_raw",
@@ -75,7 +74,7 @@ def parse_conv(tshark_output):
 
     for line in tshark_output.strip().splitlines():
         fields = line.strip().split('\t')
-        if len(fields) != 13:
+        if len(fields) != 12:
             continue
 
         src_ip = fields[0] if fields[0] else fields[1]
@@ -83,16 +82,19 @@ def parse_conv(tshark_output):
 
         tcp_src, udp_src = fields[2], fields[3]
         tcp_dst, udp_dst = fields[6], fields[7]
-        tcp_payload, udp_payload = fields[9], fields[10]
+        tcp_payload, udp_payload = fields[8], fields[9]
+        payload_len = 0
 
         if tcp_src and tcp_dst:
             src_port, dst_port = tcp_src, tcp_dst
             layer="tcp"
             binary_data = binascii.unhexlify(tcp_payload)
+            payload_len = int(tcp_payload)
         elif udp_src and udp_dst:
             src_port, dst_port = udp_src, udp_dst
             layer="udp"
             binary_data = binascii.unhexlify(udp_payload)
+            payload_len = int(udp_payload)
 
         entropy = calculate_entropy(binary_data)
 
@@ -103,7 +105,7 @@ def parse_conv(tshark_output):
             "port_A": int(src_port),
             "address_B": dst_ip,
             "port_B": int(dst_port),
-            "bytes": int(fields[8]),
+            "bytes": payload_len,
             "packets": 1,
             "protocol": fields[12],
             "entropy": entropy,
@@ -252,6 +254,7 @@ def merge_results(all_results):
             for conv in merged_data[layer].values():
                 if conv["packets"] > 0:
                     conv["entropy"] = conv["entropy"] / conv["packets"]
+                    conv["bytes"] = float(conv["bytes"] / conv["packets"])
             merged_data[layer] = list(merged_data[layer].values())
 
     return merged_data
