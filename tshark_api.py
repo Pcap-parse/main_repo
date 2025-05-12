@@ -28,16 +28,6 @@ class CollectorsResponse(BaseModel):
     collectors: List[CollectorInfo]
 
 
-VALID_INTERFACES = ["Ethernet", "Wi-Fi", "enp3s0"]
-
-@app.post("/api/v1/tshark", response_model=StartResponse)
-def start_device(req: StartRequest):
-    if req.device not in VALID_INTERFACES:
-        return StartResponse(success=False, error="interface not found")
-    start()
-    return StartResponse(success=True, error="")
-
-
 #############################################################################
 # 에러 코드 설정 공통 api
 def generate_error_response(status_code: int, detail: str):

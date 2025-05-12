@@ -13,11 +13,11 @@ OPERATOR_PRECEDENCE = {
 
 
 # 명세 정보 저장 json 경로
-FILTER_JSON_PATH="D:\\script\\wireshark\\pcap_results"
-json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
+FILTER_JSON_PATH="tshark_json"
+json_file = "filter_list.json"
 
 # 정상 트래픽 특징 추출 결과 저장 경로
-PARSE_JSON_PATH="D:\\script\\wireshark\\pcap_results"
+PARSE_JSON_PATH="tshark_json"
 
 # .env 파일 설정
 # load_dotenv()
@@ -136,14 +136,8 @@ def filter_data(name, condition_str):
 
 # 필터 적용 결과 저장(or 수정) 함수
 def save_filtered_data(name, condition):
-    # 추가할 데이터
-    new_entry = {
-        "name": name,
-        "filter": condition,
-        "timestamp": datetime.now().isoformat()
-    }
-    data = []
 
+    data = []
     # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
     if os.path.exists(json_file):
         with open(json_file , 'r', encoding='utf-8') as f:
@@ -153,6 +147,27 @@ def save_filtered_data(name, condition):
     else:
         data = []
 
+    # 동일한 name + filter 조건이 이미 존재하면 추가하지 않음
+    for item in data:
+        if item.get("name") == name and item.get("filter") == condition:
+            return True, "Success", data
+
+    # 같은 name 중 가장 큰 id 찾기
+    max_id = max(
+        [item.get("id", 0) for item in data if item.get("name") == name],
+        default=0
+    )
+    new_id = max_id + 1
+
+    # 새 항목 추가
+    new_entry = {
+        "name": name,
+        "filter": condition,
+        "timestamp": datetime.now().isoformat(),
+        "id": new_id
+    }
+    data.append(new_entry)
+    """
     # 동일한 name이 있는지 검사하고 업데이트 또는 추가
     updated = False
     for i, item in enumerate(data):
@@ -163,7 +178,7 @@ def save_filtered_data(name, condition):
 
     # 새 항목 추가
     if not updated:
-        data.append(new_entry)
+        data.append(new_entry)"""
 
     # 파일에 저장
     with open(json_file , 'w', encoding='utf-8') as f:

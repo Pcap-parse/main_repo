@@ -293,7 +293,9 @@ def start():
     print(f"시작시간 : {start.strftime('%H:%M:%S')}")
     print(f"종료시간 : {end.strftime('%H:%M:%S')}")
 
-    return add_entry(name_only)
+    add_entry(name_only)
+
+    return "success"
 
 # json 파일 존재 확인
 def check_info():
