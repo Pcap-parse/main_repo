@@ -3,7 +3,7 @@ import operator as op
 import json
 import os
 from datetime import datetime
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 OPERATOR_PRECEDENCE = {
     "!": 3,
@@ -11,11 +11,19 @@ OPERATOR_PRECEDENCE = {
     "||": 1
 }
 
-load_dotenv()
 
-FILTER_JSON_PATH = os.getenv("FILTER_JSON_PATH")
+# 명세 정보 저장 json 경로
+FILTER_JSON_PATH="D:\\script\\wireshark\\pcap_results"
 json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
-PARSE_JSON_PATH = os.getenv("PARSE_JSON_PATH")
+
+# 정상 트래픽 특징 추출 결과 저장 경로
+PARSE_JSON_PATH="D:\\script\\wireshark\\pcap_results"
+
+# .env 파일 설정
+# load_dotenv()
+# FILTER_JSON_PATH = os.getenv("FILTER_JSON_PATH")
+# json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
+# PARSE_JSON_PATH = os.getenv("PARSE_JSON_PATH")
 
 def convert_value(value):
     if isinstance(value, str):
@@ -102,7 +110,6 @@ def evaluate_postfix(entry, postfix_tokens):
 def filter_data(name, condition_str):
 
     file_path = os.path.join(PARSE_JSON_PATH, f"{name}.json")
-
     if not os.path.exists(file_path):
         return False, "File Not Found", ""
 
