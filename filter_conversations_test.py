@@ -106,8 +106,39 @@ def evaluate_postfix(entry, postfix_tokens):
     return stack[0] if stack else False
 
 
+def normalize_logic(logic: str) -> str:
+    return {
+        "and": "&&",
+        "or": "||",
+    }.get(logic.lower(), logic)
+
+
+def condition_to_string(cond) -> str:
+    operator_symbols = {
+        "eq": "==",
+        "ne": "!=",
+        "gt": ">",
+        "lt": "<",
+        "ge": ">=",
+        "le": "<="
+    }
+
+    if isinstance(cond, dict) and 'logic' in cond:
+        logic = normalize_logic(cond['logic'])  # && 또는 ||
+        inner = f" {logic} ".join(
+            condition_to_string(c) for c in cond['conditions']
+        )
+        return f"({inner})"
+    else:
+        op_str = cond['operator'].lower()
+        symbol = operator_symbols.get(op_str, cond['operator'])  # 매핑 없으면 원본 사용
+        return f"{cond['key']} {symbol} {cond['value']}"
+    
+
 # 필터 값 입력 적용 함수
-def filter_data(name, condition_str):
+def filter_data(name: str, condition) -> tuple[bool, str, list]:
+
+    condition_str = condition_to_string(condition.model_dump())
 
     file_path = os.path.join(PARSE_JSON_PATH, f"{name}.json")
     if not os.path.exists(file_path):

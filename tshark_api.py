@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 from tshark_parse3 import start
 from filter_conversations_test import filter_data, save_filtered_data, delete_filtered_data, retrieve_filtered_data
-from typing import List
+from typing import Union, List, Literal
 
 app = FastAPI()
 
@@ -45,29 +45,22 @@ def make_response(message: str, **kwargs):
 
 
 # 필터링 적용 api
-@app.get("/api/v1/filter/apply/{name}")
-def search_endpoint(
-    name: str,
-    key: List[str] = Query(...),
-    operator: List[str] = Query(...),
-    value: List[str] = Query(...),
-    logic: str = Query("and")
-):
+class SimpleCondition(BaseModel):
+    key: str
+    operator: str
+    value: Union[str, int, float, bool]
+
+class ConditionGroup(BaseModel):
+    logic: Literal["and", "or"]
+    conditions: List[Union["ConditionGroup", SimpleCondition]]
+
+# forward reference 해결
+ConditionGroup.model_rebuild()
+
+@app.post("/api/v1/filter/apply/{name}")
+def search_endpoint(name: str, condition: Union[SimpleCondition, ConditionGroup]):
     try:
-        if not (len(key) == len(operator) == len(value)):
-            return generate_error_response(400, "key, operator, value의 개수가 일치하지 않습니다.")
-
-        # 하나의 복합 조건 구조 생성
-        condition = {
-            "logic": logic,
-            "conditions": [
-                {"key": k, "operator": op, "value": v}
-                for k, op, v in zip(key, operator, value)
-            ]
-        }
-
         result, msg, data = filter_data(name, condition)
-
         if result:
             return make_response(msg, data=data)
         else:
