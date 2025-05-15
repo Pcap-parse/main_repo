@@ -101,6 +101,12 @@ def save_filter(name: str, condition: str):
         return generate_error_response(500, "Internal Server Error")
 
 
+# class FilterUpdateRequest(BaseModel):
+#     name: str
+#     filter: str
+#     id: int
+
+
 # 필터링 수정 api
 @app.put("/api/v1/filter/modify")
 def modify_filter(req: dict = Body(...)):
@@ -127,10 +133,10 @@ def modify_filter(req: dict = Body(...)):
 
 # 필터링 삭제 api
 @app.delete("/api/v1/filter/delete/{name}")
-def delete_filter(name: str):
+def delete_filter(name: str, id: int):
     try:
         # 필터링 적용
-        result, msg, data = delete_filtered_data(name)
+        result, msg, data = delete_filtered_data(name, id)
 
         if result == True:
             return make_response(msg, data=data)
@@ -151,10 +157,10 @@ def delete_filter(name: str):
 
 # 명세 조회 api(저장된 정보 조회)
 @app.get("/api/v1/filter/retrieve/{name}")
-def retrieve_filter(name: str):
+def retrieve_filter(name: str, id: int):
     try:
         # 필터링 적용
-        result, msg, data = retrieve_filtered_data(name)
+        result, msg, data = retrieve_filtered_data(name,id)
 
         if result == True:
             return make_response(msg, data=data)

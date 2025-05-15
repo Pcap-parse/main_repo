@@ -137,7 +137,13 @@ def condition_to_string(cond) -> str:
 
 # 필터 값 입력 적용 함수
 def filter_data(name: str, condition) -> tuple[bool, str, list]:
-    condition_str = condition_to_string(condition.model_dump())
+    print(condition)
+    if hasattr(condition, "model_dump"):
+        condition_str = condition_to_string(condition.model_dump())
+
+    # 문자열로 직접 전달된 경우
+    elif isinstance(condition, str):
+        condition_str = condition
 
     file_path = os.path.join(PARSE_JSON_PATH, f"{name}.json")
     if not os.path.exists(file_path):
@@ -180,7 +186,7 @@ def save_filtered_data(name, condition):
     # 동일한 name + filter 조건이 이미 존재하면 추가하지 않음
     for item in data:
         if item.get("name") == name and item.get("filter") == condition:
-            return True, "Success", data
+            return False, "Existed data", data
 
     # 같은 name 중 가장 큰 id 찾기
     max_id = max(
@@ -243,13 +249,13 @@ def modify_filtered_data(new_entry):
 
 
 # 명세 조회 함수
-def retrieve_filtered_data(file_name):
+def retrieve_filtered_data(file_name, id):
     if os.path.exists(json_file):
         with open(json_file , 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         for entry in data:
-            if entry.get("name") == file_name:
+            if entry.get("name") == file_name and entry.get("id") == id:
                 condition = entry.get("filter")
                 break
         # print(condition)
@@ -260,15 +266,21 @@ def retrieve_filtered_data(file_name):
 
 
 # 명세 삭제 함수
-def delete_filtered_data(file_name):
+def delete_filtered_data(file_name, id):
     if os.path.exists(json_file):
         with open(json_file , 'r', encoding='utf-8') as f:
             data = json.load(f)
 
-        data = [entry for entry in data if entry.get("name") != file_name]
+        def is_match(entry):
+            return entry.get("name") == file_name and entry.get("id") == id
+
+        if not any(is_match(entry) for entry in data):
+            return False, "Entry Not Found", ""
+
+        updated_data = [entry for entry in data if not is_match(entry)]
 
         with open(json_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
+            json.dump(updated_data, f, indent=4, ensure_ascii=False)
 
         return True, "Success", ""
     
