@@ -13,11 +13,11 @@ OPERATOR_PRECEDENCE = {
 
 
 # 명세 정보 저장 json 경로
-FILTER_JSON_PATH="tshark_json"
-json_file = "filter_list.json"
+FILTER_JSON_PATH="D:\\script\\wireshark\\pcap_results"
+json_file = FILTER_JSON_PATH + "\\filter_list.json"
 
 # 정상 트래픽 특징 추출 결과 저장 경로
-PARSE_JSON_PATH="tshark_json"
+PARSE_JSON_PATH="D:\\script\\wireshark\\pcap_results"
 
 # .env 파일 설정
 # load_dotenv()
@@ -137,7 +137,6 @@ def condition_to_string(cond) -> str:
 
 # 필터 값 입력 적용 함수
 def filter_data(name: str, condition) -> tuple[bool, str, list]:
-
     condition_str = condition_to_string(condition.model_dump())
 
     file_path = os.path.join(PARSE_JSON_PATH, f"{name}.json")
@@ -165,10 +164,10 @@ def filter_data(name: str, condition) -> tuple[bool, str, list]:
     return True, "Success", result
 
 
-# 필터 적용 결과 저장(or 수정) 함수
+# 필터 적용 결과 저장 함수
 def save_filtered_data(name, condition):
-
     data = []
+
     # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
     if os.path.exists(json_file):
         with open(json_file , 'r', encoding='utf-8') as f:
@@ -218,6 +217,31 @@ def save_filtered_data(name, condition):
     return True, "Success", data
 
 
+# 필터 수정 api
+def modify_filtered_data(new_entry):
+    new_entry["timestamp"] = datetime.now().isoformat()
+
+    # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
+    if os.path.exists(json_file):
+        with open(json_file , 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    else:
+        return False, "File Not Found", ""
+
+    for i, item in enumerate(data):
+        if item.get("name") == new_entry["name"] and item.get("id") == new_entry["id"]:
+            data[i] = new_entry
+            break
+    else:
+        return False, "Entry Not Found", data
+    
+    # 파일에 저장
+    with open(json_file , 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+    return True, "Success", data
+
+
 # 명세 조회 함수
 def retrieve_filtered_data(file_name):
     if os.path.exists(json_file):
@@ -228,7 +252,7 @@ def retrieve_filtered_data(file_name):
             if entry.get("name") == file_name:
                 condition = entry.get("filter")
                 break
-        print(condition)
+        # print(condition)
         return filter_data(file_name, condition)
     
     else:

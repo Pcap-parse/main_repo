@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Body
 from pydantic import BaseModel
 from typing import List
 from tshark_parse3 import start
-from filter_conversations_test import filter_data, save_filtered_data, delete_filtered_data, retrieve_filtered_data
+from filter_conversations_test import filter_data, save_filtered_data, delete_filtered_data, retrieve_filtered_data, modify_filtered_data
 from typing import Union, List, Literal
 
 app = FastAPI()
@@ -58,7 +58,7 @@ class ConditionGroup(BaseModel):
 ConditionGroup.model_rebuild()
 
 @app.post("/api/v1/filter/apply/{name}")
-def search_endpoint(name: str, condition: Union[SimpleCondition, ConditionGroup]):
+def apply_filter(name: str, condition: Union[SimpleCondition, ConditionGroup]):
     try:
         result, msg, data = filter_data(name, condition)
         if result:
@@ -79,7 +79,7 @@ def search_endpoint(name: str, condition: Union[SimpleCondition, ConditionGroup]
 
 # 필터링 저장 api
 @app.put("/api/v1/filter/save/{name}")
-def search_endpoint(name: str, condition: str):
+def save_filter(name: str, condition: str):
     try:
         # 필터링 적용
         result, msg, data = save_filtered_data(name, condition)
@@ -99,11 +99,35 @@ def search_endpoint(name: str, condition: str):
     
     except Exception as e:
         return generate_error_response(500, "Internal Server Error")
+
+
+# 필터링 수정 api
+@app.put("/api/v1/filter/modify")
+def modify_filter(req: dict = Body(...)):
+    try:
+        # 필터링 적용
+        result, msg, data = modify_filtered_data(req)
+        
+        if result == True:
+            return make_response(msg, data=data)
+        
+        else:
+            return generate_error_response(404, msg)
+
+    # except FileNotFoundError as e:
+    #     # 파일이 없는 경우 404 응답
+    #     return generate_error_response(404, str(e))
     
+    # except HTTPException as e:
+    #     return generate_error_response(e.status_code, e.detail)
+    
+    except Exception as e:
+        return generate_error_response(500, "Internal Server Error")
+
 
 # 필터링 삭제 api
 @app.delete("/api/v1/filter/delete/{name}")
-def search_endpoint(name: str):
+def delete_filter(name: str):
     try:
         # 필터링 적용
         result, msg, data = delete_filtered_data(name)
@@ -127,7 +151,7 @@ def search_endpoint(name: str):
 
 # 명세 조회 api(저장된 정보 조회)
 @app.get("/api/v1/filter/retrieve/{name}")
-def search_endpoint(name: str):
+def retrieve_filter(name: str):
     try:
         # 필터링 적용
         result, msg, data = retrieve_filtered_data(name)
