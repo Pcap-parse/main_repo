@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException, Query, Body
 from pydantic import BaseModel
 from typing import List
-from tshark_parse3 import start
 from filter_conversations_test import filter_data, save_filtered_data, delete_filtered_data, retrieve_filtered_data, modify_filtered_data
 from typing import Union, List, Literal
+import tshark_parse3
 
 app = FastAPI()
 
@@ -26,6 +26,16 @@ class CollectorInfo(BaseModel):
 
 class CollectorsResponse(BaseModel):
     collectors: List[CollectorInfo]
+
+class FileInfo(BaseModel):
+    name: str
+    filter: str
+    timestamp: str
+
+class TsharkInfoResponse(BaseModel):
+    success: bool
+    msg: str
+    data: List[FileInfo]
 
 
 #############################################################################
@@ -177,3 +187,34 @@ def retrieve_filter(name: str, id: int):
     
     except Exception as e:
         return generate_error_response(500, "Internal Server Error")
+    
+# parse3 정보 조회
+@app.get("/api/v1/tshark_info", response_model=TsharkInfoResponse)
+def serch_info():
+    check_err = tshark_parse3.check_info()
+    if check_err == "success":
+        check, result = tshark_parse3.load_json_list()
+        if check == "success":
+            return TsharkInfoResponse(success=True, msg="", data=result)
+        else:
+            return TsharkInfoResponse(success=False, msg="Tshark Info Fail", data=[])
+    else:
+        return TsharkInfoResponse(success=False, msg=check_err, data=[])
+
+# parse3 추출
+@app.get("/api/v1/tshark", response_model=StartResponse)
+def parse_start():
+    check = tshark_parse3.start()
+    if check == "success":
+        return StartResponse(success=True, error="")
+    else:
+        return StartResponse(success=False, error="tshark start fail")
+   
+# parse3 정보 선택 삭제
+@app.delete("/api/v1/tshark_delete/{name}", response_model=StartResponse)
+def select_delete(name: str):
+    result = tshark_parse3.delete_json(name)
+    if result=="success":
+        return StartResponse(success=True, error="")
+    else:
+        return StartResponse(success=False, error=f"{name} delete fail")

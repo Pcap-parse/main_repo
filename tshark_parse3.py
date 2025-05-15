@@ -10,14 +10,17 @@ import math
 from functools import lru_cache
 import binascii
 
+JSON_FOLDER = "tshark_json//"
+INFO_JSON = "tshark_list.json"
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
-    filter_pkt = "!_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp) && (tcp.srcport || udp.srcport)"
+    filter_pkt = "!tcp.analysis.retransmission && !tcp.analysis.fast_retransmission && !tcp.analysis.spurious_retransmission && !_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp) && (tcp.srcport || udp.srcport)"
 
     command = [
         program,
+        "-2",
         "-r", pcap_file, 
         "-Y", filter_pkt,
         "-T", "fields",
@@ -88,12 +91,12 @@ def parse_conv(tshark_output):
             src_port, dst_port = tcp_src, tcp_dst
             layer="tcp"
             binary_data = binascii.unhexlify(tcp_payload)
-            payload_len = len(tcp_payload) if tcp_payload else 0
+            payload_len = len(binary_data) if tcp_payload else 0
         elif udp_src and udp_dst:
             src_port, dst_port = udp_src, udp_dst
             layer="udp"
             binary_data = binascii.unhexlify(udp_payload)
-            payload_len = len(udp_payload) if udp_payload else 0
+            payload_len = len(binary_data) if udp_payload else 0
 
         entropy = calculate_entropy(binary_data)
 
@@ -106,7 +109,7 @@ def parse_conv(tshark_output):
             "port_B": int(dst_port),
             "bytes": payload_len,
             "packets": 1,
-            "protocol": fields[12],
+            "protocol": fields[11],
             "entropy": entropy,
             "seq_num": seq_num
         }
@@ -172,7 +175,7 @@ def analyze_pcap_file(pcap_file, output_folder):
 
     merged_results = merge_results(results_list)
 
-    output_file = os.path.join(output_folder, f"{os.path.basename(pcap_file)}_test2.json")
+    output_file = os.path.join(JSON_FOLDER, f"{os.path.basename(pcap_file)}.json")
     with open(output_file, 'w') as json_file:
         json.dump(merged_results, json_file, indent=4)
 
@@ -268,15 +271,86 @@ def analyze_pcap_files(input_folder, output_folder):
     for pcap_file in pcap_files:
         analyze_pcap_file(pcap_file, output_folder)
 
-
 def start():
-    input_folder = "D:\\script\\wireshark\\pcaps"   # pcap 파일 모아놓은 폴더 경로
-    output_folder = "D:\\script\\wireshark\\pcap_results" # 결과 파일 저장 폴더 경로
+    input_folder = f"D:\\script\\wireshark\\pcaps\\10gb_none_retransmission.pcap"   # pcap 파일 모아놓은 폴더 경로
+    output_folder = f"{JSON_FOLDER}\\pcap_results" # 결과 파일 저장 폴더 경로
     os.makedirs(output_folder, exist_ok=True)
 
     start = datetime.now()
-    analyze_pcap_files(input_folder, output_folder)
+    merge_results = analyze_pcap_file(input_folder, output_folder)
     end = datetime.now()
+    
+    if not os.path.exists(JSON_FOLDER):
+        os.makedirs(JSON_FOLDER)
+
+    filename = os.path.basename(input_folder)
+    name_only = os.path.splitext(filename)[0]
+    name_only = f"{name_only}.json"
+    with open(f"{JSON_FOLDER}{name_only}", 'w') as json_file:
+        json.dump(merge_results, json_file, indent=4)
 
     print(f"시작시간 : {start.strftime('%H:%M:%S')}")
     print(f"종료시간 : {end.strftime('%H:%M:%S')}")
+
+    add_entry(name_only)
+
+    return "success"
+
+# json 조회
+def load_json_list():
+    if not os.path.exists(INFO_JSON):
+        return "fail", []
+    with open(INFO_JSON, "r", encoding="utf-8") as f:
+        return "success", flatten_results(json.load(f))
+    
+def save_json_list(data):
+    with open(INFO_JSON, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+# json append
+def add_entry(name, filter_str=""):
+    check, data = load_json_list()
+    data = data or []
+    new_entry = {
+        "name": name,
+        "filter": filter_str,
+        "timestamp": datetime.now().isoformat()
+    }
+    data.append(new_entry)
+    save_json_list(data)
+    return check
+
+def flatten_results(result):
+    flat = []
+    for item in result:
+        if isinstance(item, list):
+            flat.extend(item)
+        else:
+            flat.append(item)
+    return flat
+
+def delete_json(target_name):
+    with open(INFO_JSON, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    target_file_path = os.path.join(os.path.dirname(JSON_FOLDER), target_name)
+    if os.path.exists(target_file_path):
+        os.remove(target_file_path)
+
+    original_len = len(data)
+    data = [entry for entry in data if entry.get("name") != target_name]
+    removed_count = original_len - len(data)
+    print(removed_count)
+    if removed_count > 0:
+        with open(INFO_JSON, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        return "success"
+    else:
+        return "fail"
+    
+# json 파일 존재 확인
+def check_info():
+    if not os.path.exists(JSON_FOLDER):
+        return "not create json"
+    else:
+        return "success"
