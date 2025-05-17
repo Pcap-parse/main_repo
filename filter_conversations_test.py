@@ -147,7 +147,7 @@ def filter_data(name, condition_str):
 
     file_path = os.path.join(PARSE_JSON_PATH, f"{name}.json")
     if not os.path.exists(file_path):
-        return False, "Conversations File Not Found", ""
+        return False, "Conversations File Not Found", {}
 
     with open(file_path, 'r') as file:
         data = json.load(file)
@@ -238,7 +238,7 @@ def modify_filtered_data(name, id, filter):
         with open(json_file , 'r', encoding='utf-8') as f:
             data = json.load(f)
     else:
-        return False, "File Not Found", ""
+        return False, "File Not Found", []
 
     for i, item in enumerate(data):
         if item.get("name") == new_entry["name"] and item.get("id") == new_entry["id"]:
@@ -265,10 +265,19 @@ def retrieve_filtered_data(file_name, id):
                 condition = entry.get("filter")
                 break
         # print(condition)
-        return filter_data(file_name, condition)
+        return True, "Success", filter_data(file_name, condition)
     
     else:
-        return False, "File Not Found", ""
+        return False, "File Not Found", {}
+    
+def all_filtered_data():
+    if os.path.exists(json_file):
+        with open(json_file , 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return True, "Success", data
+    else:
+        return False, "File Not Found", []
+
 
 
 # 명세 삭제 함수
@@ -281,14 +290,14 @@ def delete_filtered_data(file_name, id):
             return entry.get("name") == file_name and entry.get("id") == id
 
         if not any(is_match(entry) for entry in data):
-            return False, "Entry Not Found", ""
+            return False, "Entry Not Found", []
 
         updated_data = [entry for entry in data if not is_match(entry)]
 
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(updated_data, f, indent=4, ensure_ascii=False)
 
-        return True, "Success", ""
+        return True, "Success", updated_data
     
     else:
-        return False, "File Not Found", ""
+        return False, "File Not Found", []

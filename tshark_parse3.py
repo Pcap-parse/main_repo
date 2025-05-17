@@ -291,10 +291,13 @@ def start():
 
 # json 조회
 def load_json_list():
-    if not os.path.exists(INFO_JSON):
-        return "fail", []
-    with open(INFO_JSON, "r", encoding="utf-8") as f:
-        return "success", flatten_results(json.load(f))
+    if not os.path.exists(JSON_FOLDER):
+        return False, "not create json", []
+    else:
+        if not os.path.exists(INFO_JSON):
+            return False, "File Not Found", []
+        with open(INFO_JSON, "r", encoding="utf-8") as f:
+            return True, "success", flatten_results(json.load(f))
     
 def save_json_list(data):
     with open(INFO_JSON, "w", encoding="utf-8") as f:
@@ -306,7 +309,7 @@ def add_entry(name, filter_str=""):
     data = data or []
     new_entry = {
         "name": name,
-        "filter": filter_str,
+        # "filter": filter_str,
         "timestamp": datetime.now().isoformat()
     }
     data.append(new_entry)
