@@ -166,7 +166,7 @@ def analyze_pcap_file(pcap_file, output_folder):
 
     if not split_pcaps:
         print(f"분할된 파일이 없습니다: {pcap_file}")
-        return
+        return False, "No Splitted File", ""
 
     # 멀티프로세싱을 사용하여 분할된 pcap 파일 처리
     with Pool(processes=cpu_count()) as pool:
@@ -180,6 +180,8 @@ def analyze_pcap_file(pcap_file, output_folder):
 
     shutil.rmtree(split_dir, ignore_errors=True)
 
+    return True, "success", ""
+
 
 def normalize_protocol(proto):
     proto = proto.lower()
@@ -192,7 +194,7 @@ def normalize_protocol(proto):
 
 def merge_results(all_results):
     merged_data = {layer: {} for layer in ["tcp", "udp"]}
-    seen_pkt = set()
+    # seen_pkt = set()
 
     # 리스트 안에 여러 딕셔너리가 있는 경우 해결
     for result in all_results:
@@ -266,7 +268,7 @@ def start():
     os.makedirs(output_folder, exist_ok=True)
 
     start = datetime.now()
-    analyze_pcap_file(input_folder, output_folder)
+    result, msg, data = analyze_pcap_file(input_folder, output_folder)
     end = datetime.now()
     """
     if not os.path.exists(JSON_FOLDER):
@@ -285,7 +287,7 @@ def start():
 
     #add_entry(name_only)
 
-    return "success"
+    return result, msg, data
 
 # json 조회
 def load_json_list():
@@ -327,17 +329,17 @@ def delete_json(target_name):
     target_file_path = os.path.join(os.path.dirname(JSON_FOLDER), target_name)
     if os.path.exists(target_file_path):
         os.remove(target_file_path)
-
-    original_len = len(data)
-    data = [entry for entry in data if entry.get("name") != target_name]
-    removed_count = original_len - len(data)
-    print(removed_count)
-    if removed_count > 0:
-        with open(INFO_JSON, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        return "success"
+        original_len = len(data)
+        data = [entry for entry in data if entry.get("name") != target_name]
+        removed_count = original_len - len(data)
+        print(removed_count)
+        if removed_count > 0:
+            with open(INFO_JSON, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+        return True, "success", ""
     else:
-        return "fail"
+        return False, "File Not Found", ""
+
     
 # json 파일 존재 확인
 def check_info():
@@ -348,9 +350,12 @@ def check_info():
 
 def json_search(target_name):
     target_json = f"{JSON_FOLDER}{target_name}"
-    with open(target_json, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data
+    try:
+        with open(target_json, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return True, "success", data
+    except FileNotFoundError:
+        return False, "File Not Found", ""
     
 if __name__ == "__main__":
     input_folder = f"D:\\script\\wireshark\\pcaps"   # pcap 파일 모아놓은 폴더 경로

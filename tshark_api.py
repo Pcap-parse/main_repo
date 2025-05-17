@@ -204,8 +204,8 @@ def serch_info():
 # parse3 추출
 @app.get("/api/v1/tshark", response_model=StartResponse)
 def parse_start():
-    check = tshark_parse3.start()
-    if check == "success":
+    result, msg, data = tshark_parse3.start()
+    if result:
         return StartResponse(success=True, error="")
     else:
         return StartResponse(success=False, error="tshark start fail")
@@ -213,8 +213,8 @@ def parse_start():
 # parse3 정보 선택 삭제
 @app.delete("/api/v1/tshark_delete/{name}", response_model=StartResponse)
 def select_delete(name: str):
-    result = tshark_parse3.delete_json(name)
-    if result=="success":
+    result, msg, data = tshark_parse3.delete_json(name)
+    if result:
         return StartResponse(success=True, error="")
     else:
         return StartResponse(success=False, error=f"{name} delete fail")
