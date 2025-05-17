@@ -68,8 +68,13 @@ class ConditionGroup(BaseModel):
 ConditionGroup.model_rebuild()
 
 @app.post("/api/v1/filter/apply/{name}")
-def apply_filter(name: str, condition: Union[SimpleCondition, ConditionGroup]):
+def apply_filter(name: str, req: SimpleCondition):
     try:
+        key = req.key
+        operator = req.operator
+        value = req.value
+        
+        condition = key + operator + value
         result, msg, data = filter_data(name, condition)
         if result:
             return make_response(msg, data=data)

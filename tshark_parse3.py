@@ -110,7 +110,7 @@ def parse_conv(tshark_output):
             "packets": 1,
             "protocol": fields[11],
             "entropy": entropy,
-            "seq_num": seq_num
+            # "seq_num": seq_num
         }
 
         data[layer].append(conversation)
