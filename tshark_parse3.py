@@ -12,6 +12,7 @@ import binascii
 
 JSON_FOLDER = "tshark_json//"
 INFO_JSON = "tshark_list.json"
+PCAP_FOLDER = "D:\\script\\wireshark\\pcaps"
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(pcap_file):
@@ -75,7 +76,7 @@ def parse_conv(tshark_output):
     }
 
     for line in tshark_output.strip().splitlines():
-        fields = line.strip().split('\t')
+        fields = line.strip().split("\t")
         if len(fields) != 12:
             continue
 
@@ -174,8 +175,9 @@ def analyze_pcap_file(pcap_file, output_folder):
 
     merged_results = merge_results(results_list)
 
-    output_file = os.path.join(JSON_FOLDER, f"{os.path.basename(pcap_file)}.json")
-    with open(output_file, 'w') as json_file:
+    json_name = os.path.basename(pcap_file)
+    output_file = os.path.join(JSON_FOLDER, f"{os.path.splitext(json_name)[0]}.json")
+    with open(output_file, "w") as json_file:
         json.dump(merged_results, json_file, indent=4)
 
     shutil.rmtree(split_dir, ignore_errors=True)
@@ -262,54 +264,47 @@ def analyze_pcap_files(input_folder, output_folder):
     for pcap_file in pcap_files:
         analyze_pcap_file(pcap_file, output_folder)
 
-def start():
-    input_folder = f"D:\\script\\wireshark\\pcaps\\DEF CON 26 ctf packet captures.pcap"   # pcap 파일 모아놓은 폴더 경로
+def start(file_name):
     output_folder = f"{JSON_FOLDER}\\pcap_results" # 결과 파일 저장 폴더 경로
     os.makedirs(output_folder, exist_ok=True)
 
+    pcap_dir = f"{PCAP_FOLDER}\\{file_name}"
+
     start = datetime.now()
-    result, msg, data = analyze_pcap_file(input_folder, output_folder)
+    result, msg, data = analyze_pcap_file(pcap_dir, output_folder)
     end = datetime.now()
-    """
+
     if not os.path.exists(JSON_FOLDER):
         os.makedirs(JSON_FOLDER)
 
-    
-    filename = os.path.basename(input_folder)
-    name_only = os.path.splitext(filename)[0]
-    name_only = f"{name_only}.json"
-    with open(f"{JSON_FOLDER}{name_only}", 'w') as json_file:
-        json.dump(merge_results, json_file, indent=4)
-    """
-    
-    print(f"시작시간 : {start.strftime('%H:%M:%S')}")
-    print(f"종료시간 : {end.strftime('%H:%M:%S')}")
+    base_filename = os.path.basename(file_name)
+    name_only = os.path.splitext(base_filename)[0]
+    json_name = f"{name_only}.json"
+    add_entry(json_name)
 
-    #add_entry(name_only)
+    print(f"시작시간 : {start.strftime("%H:%M:%S")}")
+    print(f"종료시간 : {end.strftime("%H:%M:%S")}")
 
     return result, msg, data
 
 # json 조회
 def load_json_list():
-    if not os.path.exists(JSON_FOLDER):
-        return False, "not create json", []
-    else:
-        if not os.path.exists(INFO_JSON):
-            return False, "File Not Found", []
-        with open(INFO_JSON, "r", encoding="utf-8") as f:
-            return True, "success", flatten_results(json.load(f))
+    if not os.path.exists(INFO_JSON):
+        return False, "File Not Found", ""
+    with open(INFO_JSON, "r", encoding="utf-8") as f:
+        return True, "success", flatten_results(json.load(f))
+        
     
 def save_json_list(data):
     with open(INFO_JSON, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 # json append
-def add_entry(name, filter_str=""):
-    check, data = load_json_list()
+def add_entry(name):
+    check, msg, data = load_json_list()
     data = data or []
     new_entry = {
         "name": name,
-        # "filter": filter_str,
         "timestamp": datetime.now().isoformat()
     }
     data.append(new_entry)
@@ -335,7 +330,6 @@ def delete_json(target_name):
         original_len = len(data)
         data = [entry for entry in data if entry.get("name") != target_name]
         removed_count = original_len - len(data)
-        print(removed_count)
         if removed_count > 0:
             with open(INFO_JSON, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -369,5 +363,5 @@ if __name__ == "__main__":
     analyze_pcap_files(input_folder, output_folder)
     end = datetime.now()
 
-    print(f"시작시간 : {start.strftime('%H:%M:%S')}")
-    print(f"종료시간 : {end.strftime('%H:%M:%S')}")
+    print(f"시작시간 : {start.strftime("%H:%M:%S")}")
+    print(f"종료시간 : {end.strftime("%H:%M:%S")}")

@@ -11,13 +11,14 @@ OPERATOR_PRECEDENCE = {
     "||": 1
 }
 
-
+JSON_FOLDER = "tshark_json//"
+FILTER_INFO_JSON = "filter_list.json"
 # 명세 정보 저장 json 경로
-FILTER_JSON_PATH="D:\\script\\wireshark\\pcap_results"
-json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
+#FILTER_JSON_PATH="D:\\script\\wireshark\\pcap_results"
+#json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
 
 # 정상 트래픽 특징 추출 결과 저장 경로
-PARSE_JSON_PATH="D:\\script\\wireshark\\pcap_results"
+# PARSE_JSON_PATH="D:\\script\\wireshark\\pcap_results"
 
 # .env 파일 설정
 # load_dotenv()
@@ -145,7 +146,7 @@ def filter_data(name, condition_str):
     # elif isinstance(condition, str):
     #     condition_str = condition
 
-    file_path = os.path.join(PARSE_JSON_PATH, f"{name}.json")
+    file_path = os.path.join(JSON_FOLDER, f"{name}.json")
     if not os.path.exists(file_path):
         return False, "Conversations File Not Found", {}
 
@@ -175,8 +176,8 @@ def save_filtered_data(name, condition):
     data = []
 
     # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
-    if os.path.exists(json_file):
-        with open(json_file , 'r', encoding='utf-8') as f:
+    if os.path.exists(FILTER_INFO_JSON):
+        with open(FILTER_INFO_JSON , 'r', encoding='utf-8') as f:
             data = json.load(f)
             if not isinstance(data, list):
                 data = []
@@ -217,7 +218,7 @@ def save_filtered_data(name, condition):
         data.append(new_entry)"""
 
     # 파일에 저장
-    with open(json_file , 'w', encoding='utf-8') as f:
+    with open(FILTER_INFO_JSON , 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
     return True, "Success", data
@@ -234,21 +235,21 @@ def modify_filtered_data(name, id, filter):
     # new_entry["timestamp"] = datetime.now().isoformat()
     # print(new_entry["id"])
     # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
-    if os.path.exists(json_file):
-        with open(json_file , 'r', encoding='utf-8') as f:
+    if os.path.exists(FILTER_INFO_JSON):
+        with open(FILTER_INFO_JSON , 'r', encoding='utf-8') as f:
             data = json.load(f)
     else:
-        return False, "File Not Found", []
+        return False, "File Not Found", ""
 
     for i, item in enumerate(data):
         if item.get("name") == new_entry["name"] and item.get("id") == new_entry["id"]:
             data[i] = new_entry
             break
     else:
-        return False, "Entry Not Found", data
+        return False, "Entry Not Found", ""
     
     # 파일에 저장
-    with open(json_file , 'w', encoding='utf-8') as f:
+    with open(FILTER_INFO_JSON , 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
     return True, "Success", data
@@ -256,14 +257,17 @@ def modify_filtered_data(name, id, filter):
 
 # 명세 조회 함수
 def retrieve_filtered_data(file_name, id):
-    if os.path.exists(json_file):
-        with open(json_file , 'r', encoding='utf-8') as f:
+    if os.path.exists(FILTER_INFO_JSON):
+        with open(FILTER_INFO_JSON , 'r', encoding='utf-8') as f:
             data = json.load(f)
 
+        condition = None
         for entry in data:
             if entry.get("name") == file_name and entry.get("id") == id:
                 condition = entry.get("filter")
                 break
+        if condition is None:
+            return False, "Entry Not Found", {}
         # print(condition)
         return True, "Success", filter_data(file_name, condition)
     
@@ -271,8 +275,8 @@ def retrieve_filtered_data(file_name, id):
         return False, "File Not Found", {}
     
 def all_filtered_data():
-    if os.path.exists(json_file):
-        with open(json_file , 'r', encoding='utf-8') as f:
+    if os.path.exists(FILTER_INFO_JSON):
+        with open(FILTER_INFO_JSON , 'r', encoding='utf-8') as f:
             data = json.load(f)
             return True, "Success", data
     else:
@@ -282,8 +286,8 @@ def all_filtered_data():
 
 # 명세 삭제 함수
 def delete_filtered_data(file_name, id):
-    if os.path.exists(json_file):
-        with open(json_file , 'r', encoding='utf-8') as f:
+    if os.path.exists(FILTER_INFO_JSON):
+        with open(FILTER_INFO_JSON , 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         def is_match(entry):
@@ -294,7 +298,7 @@ def delete_filtered_data(file_name, id):
 
         updated_data = [entry for entry in data if not is_match(entry)]
 
-        with open(json_file, 'w', encoding='utf-8') as f:
+        with open(FILTER_INFO_JSON, 'w', encoding='utf-8') as f:
             json.dump(updated_data, f, indent=4, ensure_ascii=False)
 
         return True, "Success", updated_data
