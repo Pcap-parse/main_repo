@@ -121,7 +121,7 @@ def validate_command(command):
     return False
 
 def validate_target(command):
-    if command in ['parse', 'filter']:
+    if command in ['parse', 'filter','all-filter','pcapng']:
         return True
     return False
 
@@ -135,11 +135,11 @@ def main():
         'delete': {
             'parse': parse_delete,
             'filter': filter_delete,
-            'all-filter': filter_read_all
         },
         'read': {
             'parse': parse_read,
             'filter': filter_read,
+            'all-filter': filter_read_all
         },
         'apply': {
             'filter': filter_apply,
