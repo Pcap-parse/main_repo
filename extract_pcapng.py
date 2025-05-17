@@ -10,8 +10,10 @@ def generate_filter(flow):
     port_dst = flow["port_B"]
     proto = flow["layer"].lower()
 
-    #base_filter = f"(ip.src=={ip_src} && ip.dst=={ip_dst} && {proto}.srcport=={port_src} && {proto}.dstport=={port_dst})"
-    base_filter = f"(ip.addr=={ip_src} && ip.addr=={ip_dst} && {proto}.port=={port_src} && {proto}.port=={port_dst})"
+    #base_filter = "(ip.src=={ip_src} && ip.dst=={ip_dst} && {proto}.srcport=={port_src} && {proto}.dstport=={port_dst})"
+    base_filter = (
+    f"((ip.src=={ip_src} && ip.dst=={ip_dst} && {proto}.srcport=={port_src} && {proto}.dstport=={port_dst}) || "
+    f"(ip.src=={ip_dst} && ip.dst=={ip_src} && {proto}.srcport=={port_dst} && {proto}.dstport=={port_src}))")
     return base_filter
 
 def build_combined_filter(flows):
@@ -35,6 +37,7 @@ def tshark_extract_frame_numbers(pcap_file, display_filter, output_txt):
         "-T", "fields",
         "-e", "frame.number"
     ]
+    print(command)
     with open(output_txt, "w") as f:
         subprocess.run(command, stdout=f, stderr=subprocess.PIPE, text=True)
 
@@ -72,7 +75,7 @@ if __name__ == "__main__":
        # 통합 함수: tshark로 필터링 → frame.number 추출 → editcap으로 pcapng 저장
 
     start = datetime.now()
-    json_file=r"D:\script\wireshark\pcaps\10gb.json" # 필터 적용한 json
+    json_file=r"D:\악코_멘토링\외주\github\10gb.json" # 필터 적용한 json
     with open(json_file, "r", encoding="utf-8") as f:
         raw = json.load(f)
         flows = []

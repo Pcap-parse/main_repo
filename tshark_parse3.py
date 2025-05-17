@@ -20,7 +20,6 @@ def extract_conv(pcap_file):
 
     command = [
         program,
-        "-2",
         "-r", pcap_file, 
         "-Y", filter_pkt,
         "-T", "fields",
@@ -184,29 +183,11 @@ def analyze_pcap_file(pcap_file, output_folder):
 
 def normalize_protocol(proto):
     proto = proto.lower()
-
-    if "http" in proto:
-        return "http"
-    elif "dns" in proto:
-        return "dns"
-    elif "ftp" in proto:
-        return "ftp"
-    elif "imap" in proto:
-        return "imap"
-    elif "pop" in proto:
-        return "pop"
-    elif "smtp" in proto:
-        return "smtp"
-    elif "rtsp" in proto:
-        return "rtsp"
-    elif "telnet" in proto:
-        return "telnet"
-    elif "vnc" in proto:
-        return "vnc"
-    elif "snmp" in proto:
-        return "snmp"
-    else:
-        return proto
+    known_protocols = ["http", "dns", "ftp", "imap", "pop", "smtp", "rtsp", "telnet", "vnc", "snmp"]
+    for keyword in known_protocols:
+        if keyword in proto:
+            return keyword
+    return proto
     
 
 def merge_results(all_results):
@@ -222,7 +203,8 @@ def merge_results(all_results):
             for conv in conversations:
                 ip_pair = tuple(sorted([(conv["address_A"], conv["port_A"]), (conv["address_B"], conv["port_B"])]))
                 proto = normalize_protocol(conv["protocol"])
-                # proto = conv["protocol"]
+                #proto = conv["protocol"]
+                """
                 seq = conv["seq_num"]
                 
                 if seq is not None:
@@ -232,6 +214,7 @@ def merge_results(all_results):
                         continue  # 이미 본 패킷이면 무시 (중복 제거)
 
                     seen_pkt.add(check_dup)
+                    "
 
                 key = (ip_pair, proto)
 
@@ -239,6 +222,12 @@ def merge_results(all_results):
                 if key not in merged_data[layer]:
                     conv_copy = {k: v for k, v in conv.items() if k != "seq_num"}
                     merged_data[layer][key] = conv_copy
+                """
+                key = (ip_pair, proto)
+                if key not in merged_data[layer]:
+                    merged_data[layer][key] = {
+                        **conv.copy(),  # 전체 데이터를 복사
+                    }
 
                 else:
                     existing = merged_data[layer][key]
@@ -254,7 +243,7 @@ def merge_results(all_results):
             for conv in merged_data[layer].values():
                 if conv["packets"] > 0:
                     conv["entropy"] = conv["entropy"] / conv["packets"]
-                    conv["bytes"] = float(conv["bytes"] / conv["packets"])
+                    conv["bytes"] = conv["bytes"] / conv["packets"]
             merged_data[layer] = list(merged_data[layer].values())
 
     return merged_data
@@ -272,27 +261,29 @@ def analyze_pcap_files(input_folder, output_folder):
         analyze_pcap_file(pcap_file, output_folder)
 
 def start():
-    input_folder = f"D:\\script\\wireshark\\pcaps\\10gb_none_retransmission.pcap"   # pcap 파일 모아놓은 폴더 경로
+    input_folder = f"D:\\script\\wireshark\\pcaps\\DEF CON 26 ctf packet captures.pcap"   # pcap 파일 모아놓은 폴더 경로
     output_folder = f"{JSON_FOLDER}\\pcap_results" # 결과 파일 저장 폴더 경로
     os.makedirs(output_folder, exist_ok=True)
 
     start = datetime.now()
-    merge_results = analyze_pcap_file(input_folder, output_folder)
+    analyze_pcap_file(input_folder, output_folder)
     end = datetime.now()
-    
+    """
     if not os.path.exists(JSON_FOLDER):
         os.makedirs(JSON_FOLDER)
 
+    
     filename = os.path.basename(input_folder)
     name_only = os.path.splitext(filename)[0]
     name_only = f"{name_only}.json"
     with open(f"{JSON_FOLDER}{name_only}", 'w') as json_file:
         json.dump(merge_results, json_file, indent=4)
-
+    """
+    
     print(f"시작시간 : {start.strftime('%H:%M:%S')}")
     print(f"종료시간 : {end.strftime('%H:%M:%S')}")
 
-    add_entry(name_only)
+    #add_entry(name_only)
 
     return "success"
 
@@ -354,3 +345,15 @@ def check_info():
         return "not create json"
     else:
         return "success"
+    
+if __name__ == "__main__":
+    input_folder = f"D:\\script\\wireshark\\pcaps"   # pcap 파일 모아놓은 폴더 경로
+    output_folder = f"D:\\script\\wireshark\\pcap_results" # 결과 파일 저장 폴더 경로
+    os.makedirs(output_folder, exist_ok=True)
+
+    start = datetime.now()
+    analyze_pcap_files(input_folder, output_folder)
+    end = datetime.now()
+
+    print(f"시작시간 : {start.strftime('%H:%M:%S')}")
+    print(f"종료시간 : {end.strftime('%H:%M:%S')}")
