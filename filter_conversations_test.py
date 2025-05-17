@@ -14,7 +14,7 @@ OPERATOR_PRECEDENCE = {
 
 # 명세 정보 저장 json 경로
 FILTER_JSON_PATH="D:\\script\\wireshark\\pcap_results"
-json_file = FILTER_JSON_PATH + "\\filter_list.json"
+json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
 
 # 정상 트래픽 특징 추출 결과 저장 경로
 PARSE_JSON_PATH="D:\\script\\wireshark\\pcap_results"
@@ -136,18 +136,18 @@ def condition_to_string(cond) -> str:
     
 
 # 필터 값 입력 적용 함수
-def filter_data(name: str, condition) -> tuple[bool, str, list]:
-    print(condition)
-    if hasattr(condition, "model_dump"):
-        condition_str = condition_to_string(condition.model_dump())
+def filter_data(name, condition_str):
+    # print(condition)
+    # if hasattr(condition, "model_dump"):
+    #     condition_str = condition_to_string(condition.model_dump())
 
-    # 문자열로 직접 전달된 경우
-    elif isinstance(condition, str):
-        condition_str = condition
+    # # 문자열로 직접 전달된 경우
+    # elif isinstance(condition, str):
+    #     condition_str = condition
 
     file_path = os.path.join(PARSE_JSON_PATH, f"{name}.json")
     if not os.path.exists(file_path):
-        return False, "File Not Found", ""
+        return False, "Conversations File Not Found", ""
 
     with open(file_path, 'r') as file:
         data = json.load(file)
@@ -224,9 +224,15 @@ def save_filtered_data(name, condition):
 
 
 # 필터 수정 api
-def modify_filtered_data(new_entry):
-    new_entry["timestamp"] = datetime.now().isoformat()
-
+def modify_filtered_data(name, id, filter):
+    new_entry = {
+        "name": name,
+        "filter": filter,
+        "timestamp": datetime.now().isoformat(),
+        "id": id
+    }
+    # new_entry["timestamp"] = datetime.now().isoformat()
+    # print(new_entry["id"])
     # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
     if os.path.exists(json_file):
         with open(json_file , 'r', encoding='utf-8') as f:

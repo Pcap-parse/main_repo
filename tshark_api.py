@@ -118,7 +118,7 @@ def save_filter(name: str, condition: str):
 
 
 # 필터링 수정 api
-@pp.put("/api/v1/filtera/modify")
+@app.put("/api/v1/filtera/modify")
 def modify_filter(req: dict = Body(...)):
     try:
         # 필터링 적용
