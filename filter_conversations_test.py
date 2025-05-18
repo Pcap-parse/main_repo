@@ -146,7 +146,7 @@ def filter_data(name, condition_str):
     # elif isinstance(condition, str):
     #     condition_str = condition
 
-    file_path = os.path.join(JSON_FOLDER, f"{name}.json")
+    file_path = os.path.join(JSON_FOLDER, name)
     if not os.path.exists(file_path):
         return False, "Conversations File Not Found", {}
 

@@ -272,6 +272,8 @@ def start(file_name):
 
     start = datetime.now()
     result, msg, data = analyze_pcap_file(pcap_dir, output_folder)
+    if not result:
+        return result, msg, data
     end = datetime.now()
 
     if not os.path.exists(JSON_FOLDER):

@@ -19,7 +19,6 @@ def parse_delete(param):
     
     # 파라미터 정의
     parse_filename = f"{param[0]}.json"
-    print(parse_filename)
 
     result, msg, data = tshark_parse3.delete_json(parse_filename)
     return result, msg, data
@@ -42,7 +41,7 @@ def filter_save(param):
         return False, "Invalid parameter", []
     
     # 파라미터 정의
-    parse_filename = param[0]
+    parse_filename = f"{param[0]}.json"
     filter_str = param[1]
 
     result, msg, data = filter_conversations_test.save_filtered_data(parse_filename, filter_str)
@@ -54,7 +53,7 @@ def filter_delete(param):
         return False, "Invalid parameter", []
     
     # 파라미터 정의
-    parse_filename = param[0]
+    parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
 
     result, msg, data = filter_conversations_test.delete_filtered_data(parse_filename, filter_id)
@@ -66,7 +65,7 @@ def filter_read(param):
         return False, "Invalid parameter", {}
     
     # 파라미터 정의
-    parse_filename = param[0]
+    parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
 
     result, msg, data = filter_conversations_test.retrieve_filtered_data(parse_filename, filter_id)
@@ -86,7 +85,7 @@ def filter_apply(param):
         return False, "Invalid parameter", {}
     
     # 파라미터 정의
-    parse_filename = param[0]
+    parse_filename = f"{param[0]}.json"
     filter_str = param[1]
 
     result, msg, data = filter_conversations_test.filter_data(parse_filename, filter_str)
@@ -98,7 +97,7 @@ def filter_modify(param):
         return False, "Invalid parameter", []
     
     # 파라미터 정의
-    parse_filename = param[0]
+    parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
     filter_str = param[2]
 
