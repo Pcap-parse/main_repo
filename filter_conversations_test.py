@@ -3,7 +3,6 @@ import operator as op
 import json
 import os
 from datetime import datetime
-# from dotenv import load_dotenv
 
 OPERATOR_PRECEDENCE = {
     "!": 3,
@@ -14,18 +13,6 @@ OPERATOR_PRECEDENCE = {
 base_dir = os.path.dirname(os.path.abspath(__file__))
 JSON_FOLDER = os.path.join(base_dir,"tshark_json")
 FILTER_INFO_JSON = os.path.join(base_dir,"filter_list.json")
-# 명세 정보 저장 json 경로
-#FILTER_JSON_PATH="D:\\script\\wireshark\\pcap_results"
-#json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
-
-# 정상 트래픽 특징 추출 결과 저장 경로
-# PARSE_JSON_PATH="D:\\script\\wireshark\\pcap_results"
-
-# .env 파일 설정
-# load_dotenv()
-# FILTER_JSON_PATH = os.getenv("FILTER_JSON_PATH")
-# json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
-# PARSE_JSON_PATH = os.getenv("PARSE_JSON_PATH")
 
 def convert_value(value):
     if isinstance(value, str):
@@ -139,13 +126,6 @@ def condition_to_string(cond) -> str:
 
 # 필터 값 입력 적용 함수
 def filter_data(name, condition_str):
-    # print(condition)
-    # if hasattr(condition, "model_dump"):
-    #     condition_str = condition_to_string(condition.model_dump())
-
-    # # 문자열로 직접 전달된 경우
-    # elif isinstance(condition, str):
-    #     condition_str = condition
 
     file_path = os.path.join(JSON_FOLDER, name)
     if not os.path.exists(file_path):

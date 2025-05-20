@@ -35,7 +35,6 @@ def extract_conv(pcap_file):
         "-e", "udp.dstport",
         "-e", "tcp.payload",
         "-e", "udp.payload",
-        "-e", "tcp.seq_raw",
         "-e", "_ws.col.Protocol",
         "-o", "nameres.mac_name:FALSE"
     ]
@@ -77,11 +76,11 @@ def parse_conv(tshark_output):
         "udp": []
     }
 
-    for line in tshark_output.strip().splitlines():
-        fields = line.strip().split("\t")
-        if len(fields) != 12:
+    for line in tshark_output.splitlines():
+        fields = line.split("\t")
+        if len(fields) != 11:
             continue
-
+        
         src_ip = fields[0] if fields[0] else fields[1]
         dst_ip = fields[4] if fields[4] else fields[5]
 
@@ -101,8 +100,6 @@ def parse_conv(tshark_output):
             payload_len = len(binary_data) if udp_payload else 0
 
         entropy = calculate_entropy(binary_data)
-
-        seq_num = int(fields[10]) if fields[10] else None
         
         conversation = {
             "address_a": src_ip,
@@ -111,9 +108,8 @@ def parse_conv(tshark_output):
             "port_b": int(dst_port),
             "bytes": payload_len,
             "packets": 1,
-            "protocol": fields[11],
+            "protocol": fields[10],
             "entropy": entropy,
-            # "seq_num": seq_num
         }
 
         data[layer].append(conversation)
@@ -210,25 +206,7 @@ def merge_results(all_results):
                 ip_pair = tuple(sorted([(conv["address_a"], conv["port_a"]), (conv["address_b"], conv["port_b"])]))
                 proto = normalize_protocol(conv["protocol"])
                 #proto = conv["protocol"]
-                """
-                seq = conv["seq_num"]
-                
-                if seq is not None:
-                    check_dup = (ip_pair, proto, seq)
 
-                    if check_dup in seen_pkt:
-                        continue  # 이미 본 패킷이면 무시 (중복 제거)
-
-                    seen_pkt.add(check_dup)
-                    "
-
-                key = (ip_pair, proto)
-
-                # 대화가 처음이면 복사해서 추가, 기존에 있으면 데이터 병합
-                if key not in merged_data[layer]:
-                    conv_copy = {k: v for k, v in conv.items() if k != "seq_num"}
-                    merged_data[layer][key] = conv_copy
-                """
                 key = (ip_pair, proto)
                 if key not in merged_data[layer]:
                     merged_data[layer][key] = {
