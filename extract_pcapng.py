@@ -151,7 +151,7 @@ def parallel_editcap_extract(pcap_file, output_pcapng, frame_txt):
         print("[INFO] No frames to extract.")
         return
 
-    MAX_ARGS = 1000
+    MAX_ARGS = 512
     chunks = [frame_numbers[i:i + MAX_ARGS] for i in range(0, len(frame_numbers), MAX_ARGS)]
 
     args_list = [(idx, chunk, pcap_file, output_pcapng) for idx, chunk in enumerate(chunks)]
