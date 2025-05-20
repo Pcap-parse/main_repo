@@ -8,7 +8,7 @@ def parse_save(param):
     if len(param) != 1:
         return False, "Invalid parameter", ""
     
-    pcap_filename = f"{param[0]}.pcap"
+    pcap_filename = f"{param[0]}"
     result, msg, data = tshark_parse3.start(pcap_filename)
     return result, msg, data
 

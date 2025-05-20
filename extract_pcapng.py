@@ -25,10 +25,10 @@ PROTOCOL_MAP = {
 }
 
 def generate_filter(flow):
-    ip_src = flow["address_A"]
-    ip_dst = flow["address_B"]
-    port_src = flow["port_A"]
-    port_dst = flow["port_B"]
+    ip_src = flow["address_a"]
+    ip_dst = flow["address_b"]
+    port_src = flow["port_a"]
+    port_dst = flow["port_b"]
     proto = flow["layer"].lower()
 
     #base_filter = "(ip.src=={ip_src} && ip.dst=={ip_dst} && {proto}.srcport=={port_src} && {proto}.dstport=={port_dst})"
@@ -59,8 +59,11 @@ def tshark_extract_frame_numbers(pcap_file, display_filter, output_txt):
         "-e", "frame.number"
     ]
     print(command)
+    print(output_txt)
     with open(output_txt, "w") as f:
-        subprocess.run(command, stdout=f, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(command, stdout=f, stderr=subprocess.PIPE, text=True)
+
+    print(result)
 
 def extract_pcapng_by_frame_filter(pcap_file, output_pcapng, display_filter):
     temp_txt =os.path.join(BASE_DIR, "matched_frames.txt")
@@ -126,7 +129,7 @@ def convert_to_display_filter(filter_str, layer="tcp"):
         mapped_key = map_filter_key(key, layer)
 
         if mapped_key == "protocol":
-            proto = PROTOCOL_MAP.get(val.upper(), val.lower())
+            proto = val.lower()
             return proto
         elif isinstance(mapped_key, list):  # for layer == all
             return f"({mapped_key[0]}{op}{val} || {mapped_key[1]}{op}{val})"
@@ -134,7 +137,7 @@ def convert_to_display_filter(filter_str, layer="tcp"):
             return f"{mapped_key}{op}{val}"
 
     # Step 1: 조건 항목을 변환하고 괄호로 묶음
-    pattern = r'\b(address_[AB]|port_[AB]|protocol)\s*(==|!=)\s*([^\s&|()]+)'
+    pattern = r'\b(address_[ab]|port_[ab]|protocol)\s*(==|!=)\s*([^\s&|()]+)'
     replaced = re.sub(pattern, lambda m: f"({replace_expr(m)})", filter_str)
 
     # Step 2: 논리 연산자 주변에 괄호 정리 필요 시 → 사용자 괄호 기준 유지
@@ -145,13 +148,29 @@ def convert_to_display_filter(filter_str, layer="tcp"):
 def run_editcap(args):
     idx, chunk, pcap_file, output_pcapng = args
     temp_output = output_pcapng if idx == 0 else f"{output_pcapng}_part{idx}"
+    
     command = [
         "C:\\Program Files\\Wireshark\\editcap.exe",
         "-r", pcap_file,
         temp_output
     ] + chunk
+    
     subprocess.run(command, stderr=subprocess.PIPE, text=True)
-    return temp_output
+
+    # 패킷 수 확인
+    count_command = [
+        "C:\\Program Files\\Wireshark\\capinfos.exe",
+        "-c", temp_output
+    ]
+    result = subprocess.run(count_command, capture_output=True, text=True)
+    
+    count = 0
+    for line in result.stdout.splitlines():
+        if "Number of packets" in line:
+            count = int(line.split(":")[1].strip())
+            break
+    
+    return temp_output, count
 
 def parallel_editcap_extract(pcap_file, output_pcapng, frame_txt):
     with open(frame_txt, "rb") as f:
@@ -167,17 +186,31 @@ def parallel_editcap_extract(pcap_file, output_pcapng, frame_txt):
         print("[INFO] No frames to extract.")
         return
 
-    MAX_ARGS = 1000
+    MAX_ARGS = 500
     chunks = [frame_numbers[i:i + MAX_ARGS] for i in range(0, len(frame_numbers), MAX_ARGS)]
 
     args_list = [(idx, chunk, pcap_file, output_pcapng) for idx, chunk in enumerate(chunks)]
 
     with Pool(cpu_count()) as pool:
-        part_files = pool.map(run_editcap, args_list)
+        results = pool.map(run_editcap, args_list)
+
+    # 결과를 파일 이름과 패킷 수로 분리
+    part_files, counts = zip(*results)
+    part_files2 = list(part_files)
+
+    # 1000이 아닌 count를 가진 파일 정보를 기록할 로그 파일 경로
+    log_path = "D:\\script\\wireshark\\pcaps\\packet_count_log.txt"
+
+    with open(log_path, "w", encoding="utf-8") as log_file:
+        for file, count in zip(part_files, counts):
+            if count != 1000:
+                line = f"[INFO] {file} has {count} packets (not 1000)\n"
+                log_file.write(line)
+                print(line.strip())  # 화면에도 출력하고 싶으면
 
     if len(part_files) > 1:
         merged_output = output_pcapng.replace(".pcapng", "_merged.pcapng")
-        merge_command = ["C:\\Program Files\\Wireshark\\mergecap.exe", "-w", merged_output] + part_files
+        merge_command = ["C:\\Program Files\\Wireshark\\mergecap.exe", "-w", merged_output] + part_files2
         subprocess.run(merge_command, stderr=subprocess.PIPE, text=True)
 
         for i, part_file in enumerate(part_files):
@@ -193,11 +226,11 @@ def parallel_editcap_extract(pcap_file, output_pcapng, frame_txt):
 
 if __name__ == "__main__":
     start = datetime.now()
-    json_file=f"{JSON_FOLDER}\\10gb_sample.json" # 필터 적용한 json
+    json_file=f"{JSON_FOLDER}\\test_5gb.pcapng_test2-1.json" # 필터 적용한 json
     with open(json_file, "r", encoding="utf-8") as f:
         json_data = json.load(f)    
     # tshark로 필터링 → frame.number 추출 → editcap으로 pcapng 저장   
-    success, filter_str = get_filter("10gb_sample",3)
+    success, filter_str = get_filter("test_5gb.pcapng_test2-1",2)
     layer = determine_layer(filter_str, json_data)
     print(filter_str)
     print(layer)
@@ -205,8 +238,8 @@ if __name__ == "__main__":
     
     if success:
         extract_pcapng_by_frame_filter(
-            pcap_file="D:\\script\\wireshark\\pcaps\\10gb_sample.pcap",
-            output_pcapng="D:\\script\\wireshark\\pcaps\\10gb_sample_filterd.pcapng",
+            pcap_file="D:\\script\\wireshark\\pcaps\\test_5gb.pcapng",
+            output_pcapng="D:\\script\\wireshark\\pcaps\\5gb_sample_filterd.pcapng",
             display_filter = extract_display_filter
         )
     end = datetime.now()

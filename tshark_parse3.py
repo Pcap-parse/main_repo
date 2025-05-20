@@ -10,14 +10,15 @@ import math
 from functools import lru_cache
 import binascii
 
-JSON_FOLDER = "tshark_json//"
-INFO_JSON = "tshark_list.json"
-PCAP_FOLDER = "D:\\script\\wireshark\\pcaps"
+base_dir = os.path.dirname(os.path.abspath(__file__))
+JSON_FOLDER = os.path.join(base_dir,"tshark_json")
+INFO_JSON = os.path.join(base_dir,"tshark_list.json")
+PCAP_FOLDER = os.path.join(base_dir,"pcaps")
 
 # tshark를 이용해 특정 레이어의 대화(conversation) 정보를 추출
 def extract_conv(pcap_file):
     program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
-    filter_pkt = "!tcp.analysis.retransmission && !tcp.analysis.fast_retransmission && !tcp.analysis.spurious_retransmission && !_ws.malformed && (http || dns || ftp || imap || pop || smtp || rtsp || telnet || vnc || snmp) && (tcp.srcport || udp.srcport)"
+    filter_pkt = "!tcp.analysis.retransmission && !tcp.analysis.fast_retransmission && !tcp.analysis.spurious_retransmission && !_ws.malformed && (tcp.srcport || udp.srcport)"
 
     command = [
         program,
@@ -61,6 +62,7 @@ def split_pcap(input_file, output_dir, chunk_size=500000):
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     if result.returncode != 0:
+        shutil.rmtree(output_dir)
         print(f"editcap Error: {result.stderr}")
         return []
 
@@ -103,10 +105,10 @@ def parse_conv(tshark_output):
         seq_num = int(fields[10]) if fields[10] else None
         
         conversation = {
-            "address_A": src_ip,
-            "port_A": int(src_port),
-            "address_B": dst_ip,
-            "port_B": int(dst_port),
+            "address_a": src_ip,
+            "port_a": int(src_port),
+            "address_b": dst_ip,
+            "port_b": int(dst_port),
             "bytes": payload_len,
             "packets": 1,
             "protocol": fields[11],
@@ -205,7 +207,7 @@ def merge_results(all_results):
                 merged_data[layer] = {}
 
             for conv in conversations:
-                ip_pair = tuple(sorted([(conv["address_A"], conv["port_A"]), (conv["address_B"], conv["port_B"])]))
+                ip_pair = tuple(sorted([(conv["address_a"], conv["port_a"]), (conv["address_b"], conv["port_b"])]))
                 proto = normalize_protocol(conv["protocol"])
                 #proto = conv["protocol"]
                 """
@@ -265,7 +267,7 @@ def analyze_pcap_files(input_folder, output_folder):
         analyze_pcap_file(pcap_file, output_folder)
 
 def start(file_name):
-    output_folder = f"{JSON_FOLDER}\\pcap_results" # 결과 파일 저장 폴더 경로
+    output_folder = f"{JSON_FOLDER}" # 결과 파일 저장 폴더 경로
     os.makedirs(output_folder, exist_ok=True)
 
     pcap_dir = f"{PCAP_FOLDER}\\{file_name}"
@@ -284,8 +286,8 @@ def start(file_name):
     json_name = f"{name_only}.json"
     add_entry(json_name)
 
-    print(f"시작시간 : {start.strftime("%H:%M:%S")}")
-    print(f"종료시간 : {end.strftime("%H:%M:%S")}")
+    print(f'시작시간 : {start.strftime("%H:%M:%S")}')
+    print(f'종료시간 : {end.strftime("%H:%M:%S")}')
 
     return result, msg, data
 
@@ -305,13 +307,23 @@ def save_json_list(data):
 def add_entry(name):
     check, msg, data = load_json_list()
     data = data or []
-    new_entry = {
-        "name": name,
-        "timestamp": datetime.now().isoformat()
-    }
-    data.append(new_entry)
+
+    # name을 기준으로 기존 항목이 있는지 확인
+    found = False
+    for entry in data:
+        if entry["name"] == name:
+            entry["timestamp"] = datetime.now().isoformat()
+            found = True
+            break
+
+    # 없으면 새로 추가
+    if not found:
+        data.append({
+            "name": name,
+            "timestamp": datetime.now().isoformat()
+        })
+
     save_json_list(data)
-    return check
 
 def flatten_results(result):
     flat = []
@@ -326,7 +338,7 @@ def delete_json(target_name):
     with open(INFO_JSON, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    target_file_path = os.path.join(os.path.dirname(JSON_FOLDER), target_name)
+    target_file_path = os.path.join(JSON_FOLDER, target_name)
     if os.path.exists(target_file_path):
         os.remove(target_file_path)
         original_len = len(data)
@@ -365,5 +377,5 @@ if __name__ == "__main__":
     analyze_pcap_files(input_folder, output_folder)
     end = datetime.now()
 
-    print(f"시작시간 : {start.strftime("%H:%M:%S")}")
-    print(f"종료시간 : {end.strftime("%H:%M:%S")}")
+    # print(f"시작시간 : {start.strftime("%H:%M:%S")}")
+    # print(f"종료시간 : {end.strftime("%H:%M:%S")}")

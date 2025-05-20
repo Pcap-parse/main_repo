@@ -2,3 +2,7 @@ DEF CON 26 ctf packet captures.pcap_test2.json
 **/__pycache__/
 *.pyc
 .env
+tshark_json
+tshark_list.json
+pcaps
+filter_list.json

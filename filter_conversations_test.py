@@ -11,8 +11,9 @@ OPERATOR_PRECEDENCE = {
     "||": 1
 }
 
-JSON_FOLDER = "tshark_json//"
-FILTER_INFO_JSON = "filter_list.json"
+base_dir = os.path.dirname(os.path.abspath(__file__))
+JSON_FOLDER = os.path.join(base_dir,"tshark_json")
+FILTER_INFO_JSON = os.path.join(base_dir,"filter_list.json")
 # 명세 정보 저장 json 경로
 #FILTER_JSON_PATH="D:\\script\\wireshark\\pcap_results"
 #json_file = os.path.join(FILTER_JSON_PATH, "filter_list.json")
@@ -257,6 +258,7 @@ def modify_filtered_data(name, id, filter):
 
 # 명세 조회 함수
 def retrieve_filtered_data(file_name, id):
+    print(file_name)
     if os.path.exists(FILTER_INFO_JSON):
         with open(FILTER_INFO_JSON , 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -269,7 +271,8 @@ def retrieve_filtered_data(file_name, id):
         if condition is None:
             return False, "Entry Not Found", {}
         # print(condition)
-        return True, "Success", filter_data(file_name, condition)
+        _, _, data = filter_data(file_name, condition)
+        return True, "Success", data
     
     else:
         return False, "File Not Found", {}
