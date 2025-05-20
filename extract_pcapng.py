@@ -4,6 +4,7 @@ import subprocess
 from datetime import datetime
 import re
 from multiprocessing import Pool, cpu_count
+import filter_conversations_test
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # 현재 스크립트 기준 디렉터리
 JSON_FOLDER = os.path.join(BASE_DIR, "tshark_json")
@@ -24,31 +25,6 @@ PROTOCOL_MAP = {
     "OCSP": "ocsp"
 }
 
-def generate_filter(flow):
-    ip_src = flow["address_a"]
-    ip_dst = flow["address_b"]
-    port_src = flow["port_a"]
-    port_dst = flow["port_b"]
-    proto = flow["layer"].lower()
-
-    #base_filter = "(ip.src=={ip_src} && ip.dst=={ip_dst} && {proto}.srcport=={port_src} && {proto}.dstport=={port_dst})"
-    base_filter = (
-    f"((ip.src=={ip_src} && ip.dst=={ip_dst} && {proto}.srcport=={port_src} && {proto}.dstport=={port_dst}) || "
-    f"(ip.src=={ip_dst} && ip.dst=={ip_src} && {proto}.srcport=={port_dst} && {proto}.dstport=={port_src}))")
-    return base_filter
-
-def build_combined_filter(flows):
-    conditions = []
-    for flow in flows:
-        f = generate_filter(flow)
-        conditions.append(f)
-    combined = " || ".join(conditions)
-    final_filter = (
-        "!( _ws.malformed ) "
-        f"&& ({combined})"
-    )
-    return final_filter
-
 def tshark_extract_frame_numbers(pcap_file, display_filter, output_txt):
     # tshark로는 프레임 번호만 추출, 시간 소요 문제
     command = [
@@ -63,10 +39,9 @@ def tshark_extract_frame_numbers(pcap_file, display_filter, output_txt):
         subprocess.run(command, stdout=f, stderr=subprocess.PIPE, text=True)
 
 def extract_pcapng_by_frame_filter(pcap_file, output_pcapng, display_filter):
-    temp_txt =os.path.join(BASE_DIR, "matched_frames.txt")
+    temp_txt = os.path.join(BASE_DIR, "matched_frames.txt")
     tshark_extract_frame_numbers(pcap_file, display_filter, temp_txt)
     parallel_editcap_extract(pcap_file, output_pcapng, temp_txt)
-    #editcap_extract_frames_merge(pcap_file, temp_txt, output_pcapng)
     os.remove(temp_txt)
 
 def get_filter(name, id):
@@ -81,10 +56,19 @@ def get_filter(name, id):
             return True, entry.get("filter")
     return False, "Entry Not Found"
 
+def ex_check(cond):
+    ex = None
+    if cond in '(':
+        ex = cond[cond.find('(')]
+    elif cond in ')':
+        ex = cond[cond.find(')')]
+    return ex
+
 # layer 판단 함수
 def determine_layer(filter_str, json_data):
     matched_layers = set()
-
+    filter_str_token = filter_conversations_test.tokenize_condition(filter_str)
+    print(filter_str_token)
     for layer in ['tcp', 'udp']:
         for item in json_data.get(layer, []):
             match = True
@@ -193,22 +177,23 @@ def parallel_editcap_extract(pcap_file, output_pcapng, frame_txt):
 
 if __name__ == "__main__":
     start = datetime.now()
-    json_file=f"{JSON_FOLDER}\\10gb_sample.json" # 필터 적용한 json
+    json_file=f"{JSON_FOLDER}\\test1.json" # 필터 적용한 json
     with open(json_file, "r", encoding="utf-8") as f:
         json_data = json.load(f)    
     # tshark로 필터링 → frame.number 추출 → editcap으로 pcapng 저장   
-    success, filter_str = get_filter("10gb_sample",3)
+    success, filter_str = get_filter("test1",2)
     layer = determine_layer(filter_str, json_data)
     print(filter_str)
     print(layer)
     extract_display_filter = convert_to_display_filter(filter_str, layer)
-    
+    print(extract_display_filter)
+    """
     if success:
         extract_pcapng_by_frame_filter(
             pcap_file="D:\\script\\wireshark\\pcaps\\10gb_sample.pcap",
             output_pcapng="D:\\script\\wireshark\\pcaps\\10gb_sample_filterd.pcapng",
             display_filter = extract_display_filter
-        )
+        )"""
     end = datetime.now()
     print(f"시작시간 : {start.strftime('%H:%M:%S')}")
     print(f"종료시간 : {end.strftime('%H:%M:%S')}")
