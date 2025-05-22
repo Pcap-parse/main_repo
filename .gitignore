@@ -6,3 +6,5 @@ tshark_json
 tshark_list.json
 pcaps
 filter_list.json
+split/*
+pcapng_extract/*
