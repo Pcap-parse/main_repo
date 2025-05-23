@@ -1,0 +1,116 @@
+import json
+import os
+from lib.util import get_time, delete_split_dir
+from lib.parse_pcapng import parse_pcapng
+
+class parse_menu:
+    def __init__(self, config):
+        self.config = config
+        self.basedir = config['basedir']
+        self.parse_json = os.path.join(self.basedir, config['parse_result_dir'])
+        self.filter_info = os.path.join(self.basedir, config['parse_list'])
+        self.split_dir = os.path.join(self.basedir, config['split_pcaps'])
+
+
+    def start(self, file_name):
+        start = get_time()
+        result, msg, data = parse_pcapng(self.config).analyze_pcap_file(file_name)
+        if not result:
+            return result, msg, data
+        end = get_time()
+
+        base_filename = os.path.basename(file_name)
+        name_only = os.path.splitext(base_filename)[0]
+        json_name = f"{name_only}.json"
+        self.add_entry(json_name)
+
+        dir_path = os.path.join(self.split_dir, name_only)
+        delete_split_dir(dir_path)
+
+        print(f'시작시간 : {start.strftime("%H:%M:%S")}')
+        print(f'종료시간 : {end.strftime("%H:%M:%S")}')
+
+        return result, msg, data
+    
+
+    # json 조회
+    def load_json_list(self):
+        if not os.path.exists(self.filter_info):
+            return False, "File Not Found", ""
+        with open(self.filter_info, "r", encoding="utf-8") as f:
+            return True, "success", self.flatten_results(json.load(f))
+            
+        
+    def save_json_list(self, data):
+        with open(self.filter_info, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+    # json append
+    def add_entry(self, name):
+        check, msg, data = self.load_json_list()
+        data = data or []
+
+        # name을 기준으로 기존 항목이 있는지 확인
+        found = False
+        for entry in data:
+            if entry["name"] == name:
+                entry["timestamp"] = get_time().isoformat()
+                found = True
+                break
+
+        # 없으면 새로 추가
+        if not found:
+            data.append({
+                "name": name,
+                "timestamp": get_time().isoformat()
+            })
+
+        self.save_json_list(data)
+
+
+    def flatten_results(self, result):
+        flat = []
+        for item in result:
+            if isinstance(item, list):
+                flat.extend(item)
+            else:
+                flat.append(item)
+        return flat
+
+
+    def delete_json(self, target_name):
+        with open(self.filter_info, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        target_file_path = os.path.join(self.parse_json, target_name)
+        if os.path.exists(target_file_path):
+            os.remove(target_file_path)
+            original_len = len(data)
+            data = [entry for entry in data if entry.get("name") != target_name]
+            removed_count = original_len - len(data)
+            if removed_count > 0:
+                with open(self.filter_info, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+            return True, "success", ""
+        else:
+            return False, "File Not Found", ""
+
+
+    # json 파일 존재 확인
+    def check_info(self):
+        if not os.path.exists(self.parse_json):
+            return "not create json"
+        else:
+            return "success"
+
+
+    def json_search(self, target_name):
+        target_json = f"{self.parse_json}{target_name}"
+        try:
+            with open(target_json, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return True, "success", data
+        except FileNotFoundError:
+            return False, "File Not Found", ""
+    

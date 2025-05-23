@@ -1,4 +1,5 @@
 import os
+import operator as op
 
 config = {
     'basedir': os.path.dirname(os.path.abspath(__file__)) ,
@@ -8,4 +9,28 @@ config = {
     'pcapng_data_dir': 'pcaps',
     'filtered_pcapng_dir': 'pcapng_extract',
     'filter_list': 'filter_list.json',
+}
+
+operator_precedence = {
+    "!": 3,
+    "&&": 2,
+    "||": 1
+}
+
+operator_symbols = {
+    "eq": "==",
+    "ne": "!=",
+    "gt": ">",
+    "lt": "<",
+    "ge": ">=",
+    "le": "<="
+}
+
+ops = {
+    "==": op.eq,
+    "!=": op.ne,
+    ">": op.gt,
+    "<": op.lt,
+    ">=": op.ge,
+    "<=": op.le
 }

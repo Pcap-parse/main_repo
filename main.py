@@ -1,7 +1,8 @@
-import tshark_parse3
-import filter_conversations_test
+from lib.filter_conversations import filter_conversations
 import sys
-
+from lib.util import validate_command, validate_target, response, delete_split_dir
+from lib.parse_menu import parse_menu
+from config import config
 
 def parse_save(param):
     # 파라미터 수 검증
@@ -9,8 +10,10 @@ def parse_save(param):
         return False, "Invalid parameter", ""
     
     pcap_filename = f"{param[0]}"
-    result, msg, data = tshark_parse3.start(pcap_filename)
+    result, msg, data = parse_menu(config).start(pcap_filename)
+
     return result, msg, data
+
 
 def parse_delete(param):
     # 파라미터 수 검증
@@ -20,20 +23,17 @@ def parse_delete(param):
     # 파라미터 정의
     parse_filename = f"{param[0]}.json"
 
-    result, msg, data = tshark_parse3.delete_json(parse_filename)
+    result, msg, data = parse_menu(config).delete_json(parse_filename)
     return result, msg, data
+
 
 def parse_read(param):
-    # 파라미터 수 검증
-    #if len(param) != 1:
-    #    return False, "Invalid parameter", []
+    if len(param) != 0:
+        return False, "Invalid parameter", ""
     
-    # 파라미터 정의
-    #parse_filename = param[0]+".json"
-
-    #result, msg, data = tshark_parse3.json_search(parse_filename)
-    result, msg, data = tshark_parse3.load_json_list()
+    result, msg, data = parse_menu(config).load_json_list()
     return result, msg, data
+
 
 def filter_save(param):
     # 파라미터 수 검증
@@ -44,8 +44,9 @@ def filter_save(param):
     parse_filename = f"{param[0]}.json"
     filter_str = param[1]
 
-    result, msg, data = filter_conversations_test.save_filtered_data(parse_filename, filter_str)
+    result, msg, data = filter_conversations.save_filtered_data(parse_filename, filter_str)
     return result, msg, data
+
 
 def filter_delete(param):
     # 파라미터 수 검증
@@ -56,8 +57,9 @@ def filter_delete(param):
     parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
 
-    result, msg, data = filter_conversations_test.delete_filtered_data(parse_filename, filter_id)
+    result, msg, data = filter_conversations.delete_filtered_data(parse_filename, filter_id)
     return result, msg, data
+
 
 def filter_read(param):
     # 파라미터 수 검증
@@ -68,16 +70,18 @@ def filter_read(param):
     parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
 
-    result, msg, data = filter_conversations_test.retrieve_filtered_data(parse_filename, filter_id)
+    result, msg, data = filter_conversations.retrieve_filtered_data(parse_filename, filter_id)
     return result, msg, data
+
 
 def filter_read_all(param):
     # 파라미터 수 검증
     if len(param) != 0:
         return False, "Invalid parameter", []
 
-    result, msg, data = filter_conversations_test.all_filtered_data()
+    result, msg, data = filter_conversations.all_filtered_data()
     return result, msg, data
+
 
 def filter_apply(param):
     # 파라미터 수 검증
@@ -88,9 +92,10 @@ def filter_apply(param):
     parse_filename = f"{param[0]}.json"
     filter_str = param[1]
 
-    result, msg, data = filter_conversations_test.filter_data(parse_filename, filter_str)
+    result, msg, data = filter_conversations.filter_data(parse_filename, filter_str)
     return result, msg, data
     
+
 def filter_modify(param):
     # 파라미터 수 검증
     if len(param) != 3:
@@ -101,30 +106,14 @@ def filter_modify(param):
     filter_id = int(param[1])
     filter_str = param[2]
 
-    result, msg, data = filter_conversations_test.modify_filtered_data(parse_filename, filter_id, filter_str)
+    result, msg, data = filter_conversations.modify_filtered_data(parse_filename, filter_id, filter_str)
     return result, msg, data
 
+
 def save_pcapng(param):
+    delete_split_dir(param[0])
     return False, "Invalid parameter", []
 
-
-def response(result, msg = "", data = ""):
-    res = {
-        "success": result,
-        "msg": msg,
-        "data": data
-    }
-    return res
-
-def validate_command(command):
-    if command in ["save", "delete", "read", "apply", "modify"]:
-        return True
-    return False
-
-def validate_target(command):
-    if command in ["parse", "filter","all-filter","pcapng"]:
-        return True
-    return False
 
 def main():
     handler = {
