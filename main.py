@@ -1,7 +1,8 @@
-from lib.filter_conversations import filter_conversations
 import sys
-from lib.util import validate_command, validate_target, response, delete_split_dir
+from lib.util import validate_command, validate_target, response
 from lib.parse_menu import parse_menu
+from lib.filter_menu import filter_menu
+from lib.extract_pcapng import extract_pcapng
 from config import config
 
 def parse_save(param):
@@ -44,7 +45,7 @@ def filter_save(param):
     parse_filename = f"{param[0]}.json"
     filter_str = param[1]
 
-    result, msg, data = filter_conversations.save_filtered_data(parse_filename, filter_str)
+    result, msg, data = filter_menu(config).save_filtered_data(parse_filename, filter_str)
     return result, msg, data
 
 
@@ -57,7 +58,7 @@ def filter_delete(param):
     parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
 
-    result, msg, data = filter_conversations.delete_filtered_data(parse_filename, filter_id)
+    result, msg, data = filter_menu(config).delete_filtered_data(parse_filename, filter_id)
     return result, msg, data
 
 
@@ -70,7 +71,7 @@ def filter_read(param):
     parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
 
-    result, msg, data = filter_conversations.retrieve_filtered_data(parse_filename, filter_id)
+    result, msg, data = filter_menu(config).retrieve_filtered_data(parse_filename, filter_id)
     return result, msg, data
 
 
@@ -79,7 +80,7 @@ def filter_read_all(param):
     if len(param) != 0:
         return False, "Invalid parameter", []
 
-    result, msg, data = filter_conversations.all_filtered_data()
+    result, msg, data = filter_menu(config).all_filtered_data()
     return result, msg, data
 
 
@@ -92,7 +93,7 @@ def filter_apply(param):
     parse_filename = f"{param[0]}.json"
     filter_str = param[1]
 
-    result, msg, data = filter_conversations.filter_data(parse_filename, filter_str)
+    result, msg, data = filter_menu(config).filter_data(parse_filename, filter_str)
     return result, msg, data
     
 
@@ -106,13 +107,21 @@ def filter_modify(param):
     filter_id = int(param[1])
     filter_str = param[2]
 
-    result, msg, data = filter_conversations.modify_filtered_data(parse_filename, filter_id, filter_str)
+    result, msg, data = filter_menu(config).modify_filtered_data(parse_filename, filter_id, filter_str)
     return result, msg, data
 
 
 def save_pcapng(param):
-    delete_split_dir(param[0])
-    return False, "Invalid parameter", []
+    # 파라미터 수 검증
+    if len(param) != 2:
+        return False, "Invalid parameter", []
+    
+    # 파라미터 정의
+    parse_filename = param[0]
+    filter_id = int(param[1])
+
+    result, msg, data = extract_pcapng(config).start(parse_filename, filter_id)
+    return result, msg, data
 
 
 def main():

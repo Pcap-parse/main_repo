@@ -4,10 +4,6 @@ from config import operator_precedence, operator_symbols, ops
 
 
 class filter_conversations:
-    def __init__(self):
-        pass
-
-
     def apply_operator(self, entry_value, operator, condition_value):
         entry_value = convert_value(entry_value)
         condition_value = convert_value(condition_value)

@@ -11,7 +11,7 @@ class filter_menu:
         self.config = config
         self.basedir = config['basedir']
         self.result_dir = os.path.join(self.basedir, config['parse_result_dir'])
-        self.result_dir = os.path.join(self.basedir, config['filter_list'])
+        self.filter_list_dir = os.path.join(self.basedir, config['filter_list'])
     
     
     # 필터 값 입력 적용 함수
@@ -25,12 +25,12 @@ class filter_menu:
             data = json.load(file)
             
         condition_str = re.sub(r"(\'|\")", "", condition_str)
-        tokens = filter_conversations(self.config).tokenize_condition(condition_str)
-        postfix_tokens = filter_conversations(self.config).convert_to_postfix(tokens)
+        tokens = filter_conversations().tokenize_condition(condition_str)
+        postfix_tokens = filter_conversations().convert_to_postfix(tokens)
 
         filtered_result = {}
         for key, entries in data.items():
-            filtered_entries = [entry for entry in entries if filter_conversations(self.config).evaluate_postfix(entry, postfix_tokens)]
+            filtered_entries = [entry for entry in entries if filter_conversations().evaluate_postfix(entry, postfix_tokens)]
             if filtered_entries:
                 filtered_result[key] = filtered_entries
 
@@ -47,8 +47,8 @@ class filter_menu:
         data = []
 
         # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
-        if os.path.exists(self.result_dir):
-            with open(self.result_dir , 'r', encoding='utf-8') as f:
+        if os.path.exists(self.filter_list_dir):
+            with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 if not isinstance(data, list):
                     data = []
@@ -72,7 +72,7 @@ class filter_menu:
         data.append(new_entry)
 
         # 파일에 저장
-        with open(self.result_dir , 'w', encoding='utf-8') as f:
+        with open(self.filter_list_dir , 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
         return True, "Success", data
@@ -83,8 +83,8 @@ class filter_menu:
         new_entry = entry_format(name, filter, id)
 
         # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
-        if os.path.exists(self.result_dir):
-            with open(self.result_dir , 'r', encoding='utf-8') as f:
+        if os.path.exists(self.filter_list_dir):
+            with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
                 data = json.load(f)
         else:
             return False, "File Not Found", ""
@@ -97,7 +97,7 @@ class filter_menu:
             return False, "Entry Not Found", ""
         
         # 파일에 저장
-        with open(self.result_dir , 'w', encoding='utf-8') as f:
+        with open(self.filter_list_dir , 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
         return True, "Success", data
@@ -106,8 +106,8 @@ class filter_menu:
     # 명세 조회 함수
     def retrieve_filtered_data(self, file_name, id):
         print(file_name)
-        if os.path.exists(self.result_dir):
-            with open(self.result_dir , 'r', encoding='utf-8') as f:
+        if os.path.exists(self.filter_list_dir):
+            with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
             condition = None
@@ -126,8 +126,8 @@ class filter_menu:
         
 
     def all_filtered_data(self):
-        if os.path.exists(self.result_dir):
-            with open(self.result_dir , 'r', encoding='utf-8') as f:
+        if os.path.exists(self.filter_list_dir):
+            with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 return True, "Success", data
         else:
@@ -136,8 +136,8 @@ class filter_menu:
 
     # 명세 삭제 함수
     def delete_filtered_data(self, file_name, id):
-        if os.path.exists(self.result_dir):
-            with open(self.result_dir , 'r', encoding='utf-8') as f:
+        if os.path.exists(self.filter_list_dir):
+            with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
             def is_match(entry):
@@ -148,7 +148,7 @@ class filter_menu:
 
             updated_data = [entry for entry in data if not is_match(entry)]
 
-            with open(self.result_dir, 'w', encoding='utf-8') as f:
+            with open(self.filter_list_dir, 'w', encoding='utf-8') as f:
                 json.dump(updated_data, f, indent=4, ensure_ascii=False)
 
             return True, "Success", updated_data
