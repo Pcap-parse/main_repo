@@ -115,12 +115,17 @@ def save_pcapng(param):
     # 파라미터 수 검증
     if len(param) != 2:
         return False, "Invalid parameter", []
-    
-    # 파라미터 정의
-    parse_filename = param[0]
-    filter_id = int(param[1])
 
-    result, msg, data = extract_pcapng(config).start(parse_filename, filter_id)
+    # 파라미터 정의
+    parse_filename = f"{param[0]}.json"
+    
+    try:
+        # 쉼표로 구분된 ID들을 리스트로 변환
+        filter_ids = list(map(int, param[1].split(',')))
+    except ValueError:
+        return False, "Invalid filter ID format", []
+
+    result, msg, data = extract_pcapng(config).start(parse_filename, filter_ids)
     return result, msg, data
 
 

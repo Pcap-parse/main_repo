@@ -4,6 +4,8 @@ import shutil
 import math
 from functools import lru_cache
 import binascii
+import ipaddress
+from itertools import chain
 
 def validate_command(command):
     if command in ["save", "delete", "read", "apply", "modify"]:
@@ -82,3 +84,16 @@ def entry_format(name, condition, id):
         "id": id
     }
     return entry
+
+def format_ip_field(value: str) -> str:
+    try:
+        ip_obj = ipaddress.ip_address(value)
+        if ip_obj.version == 4:
+            return "ip.addr"
+        else:
+            return "ipv6.addr"
+    except ValueError:
+        return ""  # IP가 아니면 빈 문자열 반환
+    
+def change_list(pcap_list):
+    return list(chain.from_iterable(pcap_list))

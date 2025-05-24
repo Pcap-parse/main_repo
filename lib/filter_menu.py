@@ -53,7 +53,7 @@ class filter_menu:
                 if not isinstance(data, list):
                     data = []
         else:
-            data = []
+            return False, "File Not Found", ""
 
         # 동일한 name + filter 조건이 이미 존재하면 추가하지 않음
         for item in data:

@@ -91,7 +91,7 @@ class parse_pcapng:
             "!_ws.malformed && "
             "(tcp.srcport || udp.srcport)"
         )
-        
+
         args = [(pcap, filter_pkt) for pcap in split_pcaps]
 
         # 멀티프로세싱을 사용하여 분할된 pcap 파일 처리
@@ -102,6 +102,7 @@ class parse_pcapng:
 
         json_name = os.path.basename(pcap_file)
         output_file = os.path.join(self.result_dir, f"{os.path.splitext(json_name)[0]}.json")
+        os.makedirs(self.result_dir, exist_ok=True)
         with open(output_file, "w") as json_file:
             json.dump(merged_results, json_file, indent=4)
 
