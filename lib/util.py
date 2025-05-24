@@ -107,10 +107,10 @@ def clean_logical_operators(expr):
         new_expr = re.sub(r'(\&\&|\|\|)\s*(\&\&|\|\|)+', r'\1', expr)
         # 맨 앞 연산자 제거
         new_expr = re.sub(r'^\s*(\&\&|\|\|)\s*', '', new_expr)
-        # 맨 뒤 연산자 제거 (괄호와 공백 포함 처리)
-        new_expr = re.sub(r'(\&\&|\|\|)\s*[\)\s]*$', '', new_expr)
+        # 맨 뒤 연산자 제거 (괄호와 공백 제외외 처리)
+        new_expr = re.sub(r'(\&\&|\|\|)\s*$', '', new_expr)
         # 괄호 바로 앞 연산자 제거 (ex: ... && ) )
-        new_expr = re.sub(r'(\&\&|\|\|)\s*\)', ')', new_expr)
+        new_expr = re.sub(r'\(\s*(?:\&\&|\|\|)(?:\s*(?:\&\&|\|\|))*\s*\)', '', new_expr)
         # 빈 괄호 제거
         new_expr = re.sub(r'\(\s*\)', '', new_expr)
         

@@ -125,8 +125,8 @@ class extract_pcapng:
         negation = expression.strip().startswith('!')
         if negation:
             expression = expression.strip()[1:].strip()
-        # 괄호 제거
-        expression = expression.replace('(', '').replace(')', '')
+            # 괄호 제거
+            expression = expression.replace('(', '').replace(')', '')
 
         def extract_special_conditions(match):
             key, op, value = match.groups()
@@ -159,6 +159,7 @@ class extract_pcapng:
                 return f"{key} {op} {value}"
 
         result = cond_pattern.sub(convert_condition, expression)
+        print(result)
         result = clean_logical_operators(result)
 
         # 앞에 ! 다시 붙이기
