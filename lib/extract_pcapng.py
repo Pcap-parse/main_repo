@@ -4,7 +4,7 @@ import re
 from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from lib.wireshark_api import wireshark_api
-from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte
+from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte, clean_logical_operators
 from config import ops
 
 
@@ -121,6 +121,10 @@ class extract_pcapng:
 
 
     def convert_to_wireshark_filter(self, expression: str) -> str:
+        # 괄호 제거 전 ! 연산자 위치 파악
+        negation = expression.strip().startswith('!')
+        if negation:
+            expression = expression.strip()[1:].strip()
         # 괄호 제거
         expression = expression.replace('(', '').replace(')', '')
 
@@ -134,11 +138,11 @@ class extract_pcapng:
                 self.bytes_conditions.append(condition_str)
             return ""
 
-        special_cond_pattern = re.compile(r'\b(entropy|bytes)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|\S+)')
+        special_cond_pattern = re.compile(r'\b(entropy|bytes)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s\)]+)')
         expression = special_cond_pattern.sub(extract_special_conditions, expression)
 
         # 나머지 조건 변환
-        cond_pattern = re.compile(r'(\w+)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|\S+)')
+        cond_pattern = re.compile(r'(\w+)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s\)]+)')
         def convert_condition(match):
             key, op, value = match.groups()
             value = value.strip('"')
@@ -155,13 +159,11 @@ class extract_pcapng:
                 return f"{key} {op} {value}"
 
         result = cond_pattern.sub(convert_condition, expression)
+        result = clean_logical_operators(result)
 
-        # 연산자 중복 제거 등 후처리
-        result = re.sub(r'(\&\&|\|\|)\s*(\&\&|\|\|)+', r'\1', result)
-        result = re.sub(r'^\s*(\&\&|\|\|)\s*', '', result)
-        result = re.sub(r'\s*(\&\&|\|\|)\s*$', '', result)
-        result = re.sub(r'\s+(\&\&|\|\|)\s+', r' \1 ', result)
-        result = re.sub(r'\s+', ' ', result).strip()
+        # 앞에 ! 다시 붙이기
+        if negation and result:
+            result = f"!({result})"
 
         return result
 

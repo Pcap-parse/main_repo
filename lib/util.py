@@ -6,6 +6,7 @@ from functools import lru_cache
 import binascii
 import ipaddress
 from itertools import chain
+import re
 
 def validate_command(command):
     if command in ["save", "delete", "read", "apply", "modify"]:
@@ -99,3 +100,26 @@ def change_list(pcap_list):
     if not isinstance(pcap_list, list):
         raise TypeError(f"Expected list of lists, got {type(pcap_list).__name__}")
     return list(chain.from_iterable(pcap_list))
+
+def clean_logical_operators(expr):
+    while True:
+        # 중복된 연산자 1개로 축소
+        new_expr = re.sub(r'(\&\&|\|\|)\s*(\&\&|\|\|)+', r'\1', expr)
+        # 맨 앞 연산자 제거
+        new_expr = re.sub(r'^\s*(\&\&|\|\|)\s*', '', new_expr)
+        # 맨 뒤 연산자 제거 (괄호와 공백 포함 처리)
+        new_expr = re.sub(r'(\&\&|\|\|)\s*[\)\s]*$', '', new_expr)
+        # 괄호 바로 앞 연산자 제거 (ex: ... && ) )
+        new_expr = re.sub(r'(\&\&|\|\|)\s*\)', ')', new_expr)
+        # 빈 괄호 제거
+        new_expr = re.sub(r'\(\s*\)', '', new_expr)
+        
+        if new_expr == expr:
+            break
+        expr = new_expr
+
+    # 연산자만 남았을 경우 빈 문자열로
+    if expr.strip() in ['&&', '||']:
+        expr = ''
+
+    return expr
