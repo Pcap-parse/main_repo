@@ -15,7 +15,7 @@ class wireshark_api:
 
     # editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
     def split_pcap(self, pcap_file, chunk_size=200000):
-        program = "C:\\Program Files\\Wireshark\\editcap.exe"
+        program = "editcap" # "C:\\Program Files\\Wireshark\\editcap.exe"
         os.makedirs(self.split_dir, exist_ok=True)
         os.makedirs(self.pcap_file, exist_ok=True)
 
@@ -40,7 +40,7 @@ class wireshark_api:
 
 
     def merge_pcaps(self, pcap_list, output_file):
-        program = "C:\\Program Files\\Wireshark\\mergecap.exe"
+        program = "mergecap" # "C:\\Program Files\\Wireshark\\mergecap.exe"
         os.makedirs(self.ext_pcapng, exist_ok=True)
         output_file = os.path.join(self.ext_pcapng, f"{output_file}_filtered.pcapng")
         pcap_list = change_list(pcap_list)
@@ -54,7 +54,7 @@ class wireshark_api:
 
 
     def extract_conv(self, pcap_file, filter_pkt):
-        program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
+        program = "tshark" # "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
         command = [
             program,
             "-r", pcap_file,
@@ -85,7 +85,7 @@ class wireshark_api:
     def extract_pcap(self, pcap_file, filter_pkt):
         """필터 조건에 맞는 패킷만 새로운 pcapng 파일로 저장"""
         os.makedirs(self.ext_pcapng, exist_ok=True)
-        program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
+        program = "tshark" # "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
 
         command = [
             program,
@@ -109,7 +109,7 @@ class wireshark_api:
         idx, chunk, pcap_file, output_pcapng = args
         temp_output = output_pcapng if idx == 0 else f"part{idx}_{output_pcapng}"
         command = [
-            "C:\\Program Files\\Wireshark\\editcap.exe",
+            "editcap" # "C:\\Program Files\\Wireshark\\editcap.exe",
             "-r", pcap_file,
             temp_output
         ] + chunk
@@ -122,7 +122,7 @@ class wireshark_api:
             # print("No matched frames to extract.")
             return []
 
-        program = "C:\\Program Files\\Wireshark\\editcap.exe"  # editcap 경로
+        program = "editcap" # "C:\\Program Files\\Wireshark\\editcap.exe"  # editcap 경로
         base_name = os.path.splitext(os.path.basename(input_pcap))[0]
         output_dir = os.path.join(self.ext_pcapng, "split")
         os.makedirs(output_dir, exist_ok=True)
@@ -148,6 +148,6 @@ class wireshark_api:
                 print(f"[ERROR] Failed to extract frames chunk {i+1}:\n{result.stderr}")
                 return []
 
-            print(f"Extracted chunk {i+1}/{total_chunks} with {len(chunk_frames)} frames to {output_pcap}")
+            # print(f"Extracted chunk {i+1}/{total_chunks} with {len(chunk_frames)} frames to {output_pcap}")
 
         return output_files

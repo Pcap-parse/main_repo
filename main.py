@@ -172,4 +172,5 @@ def main():
     return response(result, msg, data)
 
 if __name__ ==  "__main__":
-    print(main())
+    result = main()
+    print(result)

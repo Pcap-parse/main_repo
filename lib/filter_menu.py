@@ -52,8 +52,8 @@ class filter_menu:
                 data = json.load(f)
                 if not isinstance(data, list):
                     data = []
-        else:
-            return False, "File Not Found", ""
+        # else:
+        #     return False, "File Not Found", ""
 
         # 동일한 name + filter 조건이 이미 존재하면 추가하지 않음
         for item in data:

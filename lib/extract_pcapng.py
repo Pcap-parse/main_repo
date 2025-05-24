@@ -43,7 +43,7 @@ class extract_pcapng:
             if satisfied:
                 matched_frames.append(frame_number)
 
-        print(len(matched_frames))
+        # print(len(matched_frames))
         results_list = wireshark_api(self.config).extract_matched_frames(pcap_file, matched_frames)
 
         return results_list
