@@ -87,11 +87,6 @@ class wireshark_api:
         os.makedirs(self.ext_pcapng, exist_ok=True)
         program = "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
 
-        # subdir = os.path.join(self.ext_pcapng, file_name)  # 하위 폴더 경로
-        # os.makedirs(subdir, exist_ok=True)  # 하위 폴더 생성
-        # base_name = os.path.splitext(os.path.basename(pcap_file))[0]
-        # output_file = os.path.join(subdir, f"{base_name}_ext.pcapng")
-
         command = [
             program,
             "-r", pcap_file,
@@ -100,7 +95,6 @@ class wireshark_api:
             "-e", "frame.number",
             "-e", "tcp.payload",
             "-e", "udp.payload",
-            # "-w", output_file
         ]
 
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -125,12 +119,12 @@ class wireshark_api:
 
     def extract_matched_frames(self, input_pcap, matched_frames):
         if not matched_frames:
-            print("No matched frames to extract.")
-            return False
+            # print("No matched frames to extract.")
+            return []
 
         program = "C:\\Program Files\\Wireshark\\editcap.exe"  # editcap 경로
         base_name = os.path.splitext(os.path.basename(input_pcap))[0]
-        output_dir = os.path.join(self.ext_pcapng, self.split_dir)
+        output_dir = os.path.join(self.ext_pcapng, "split")
         os.makedirs(output_dir, exist_ok=True)
 
         chunk_size = 512

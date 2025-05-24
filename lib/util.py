@@ -96,4 +96,6 @@ def format_ip_field(value: str) -> str:
         return ""  # IP가 아니면 빈 문자열 반환
     
 def change_list(pcap_list):
+    if not isinstance(pcap_list, list):
+        raise TypeError(f"Expected list of lists, got {type(pcap_list).__name__}")
     return list(chain.from_iterable(pcap_list))

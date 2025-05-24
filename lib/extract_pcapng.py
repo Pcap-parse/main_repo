@@ -7,7 +7,6 @@ from lib.wireshark_api import wireshark_api
 from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte
 from config import ops
 
-input_folder = f"D:\\script\\wireshark\\main_repo\\pcaps\\test1.pcapng"   # pcap 파일 모아놓은 폴더 경로
 
 class extract_pcapng:
     def __init__(self, config):
@@ -16,6 +15,7 @@ class extract_pcapng:
         self.split_dir = os.path.join(self.basedir, config['split_pcaps'])
         self.ext_pcapng = os.path.join(self.basedir, config['filtered_pcapng_dir'])
         self.filter_list_dir = os.path.join(self.basedir, config['filter_list'])
+        self.pcap_file = os.path.join(self.basedir, config['pcapng_data_dir'])
         self.entropy_conditions = []
         self.bytes_conditions = []
 
@@ -104,7 +104,6 @@ class extract_pcapng:
             # 멀티프로세싱을 사용하여 분할된 pcap 파일 처리
             with Pool(processes=cpu_count()) as pool:
                 results_list = pool.starmap(self.ext_files, args)
-                # results_list = pool.starmap(wireshark_api(self.config).extract_pcap, args)
 
             # 필터링된 결과 파일들을 병합
             merged_output = os.path.splitext(os.path.basename(pcap_file))[0]
@@ -117,7 +116,7 @@ class extract_pcapng:
 
         finally:
             base_name= os.path.splitext(os.path.basename(pcap_file))[0]
-            delete_split_dir(os.path.join(self.ext_pcapng, base_name))
+            delete_split_dir(os.path.join(self.ext_pcapng, "split"))
             delete_split_dir(os.path.join(self.split_dir, base_name))
 
 
@@ -167,6 +166,8 @@ class extract_pcapng:
         return result
 
     def start(self, file_name, ids):
+        file_json = f"{file_name}.json"
+        file_pcap = f"{file_name}.pcapng"
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -176,7 +177,7 @@ class extract_pcapng:
         matched_filters = []
 
         for item in data:
-            if item.get("name") == file_name and item.get("id") in ids:
+            if item.get("name") == file_json and item.get("id") in ids:
                 if "filter" in item:
                     filters = item["filter"]
 
@@ -204,6 +205,7 @@ class extract_pcapng:
             f"{combined_filter}"
         )
 
+        input_folder = os.path.join(self.pcap_file, file_pcap)
         start = get_time()
         result, msg, data = self.analyze_pcap_file(input_folder, filter_pkt)
         end = get_time()

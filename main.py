@@ -117,7 +117,7 @@ def save_pcapng(param):
         return False, "Invalid parameter", []
 
     # 파라미터 정의
-    parse_filename = f"{param[0]}.json"
+    parse_filename = f"{param[0]}"
     
     try:
         # 쉼표로 구분된 ID들을 리스트로 변환
