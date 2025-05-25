@@ -106,7 +106,7 @@ class parse_pcapng:
         with open(output_file, "w") as json_file:
             json.dump(merged_results, json_file, indent=4)
 
-        return True, "success", ""
+        return True, "success", f"{output_file}"
         
 
     def merge_results(self, all_results):

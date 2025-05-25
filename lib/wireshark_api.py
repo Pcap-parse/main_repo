@@ -52,6 +52,8 @@ class wireshark_api:
             raise Exception(f"mergecap error: {result.stderr}")
         print(f"Merged into: {output_file}")
 
+        return output_file
+
 
     def extract_conv(self, pcap_file, filter_pkt):
         program = "tshark" # "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
@@ -122,7 +124,7 @@ class wireshark_api:
             # print("No matched frames to extract.")
             return []
 
-        program = "editcap" # "C:\\Program Files\\Wireshark\\editcap.exe"  # editcap 경로
+        program = "editcap" #"C:\\Program Files\\Wireshark\\editcap.exe"  # editcap 경로
         base_name = os.path.splitext(os.path.basename(input_pcap))[0]
         output_dir = os.path.join(self.ext_pcapng, "split")
         os.makedirs(output_dir, exist_ok=True)

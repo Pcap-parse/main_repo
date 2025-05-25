@@ -48,6 +48,7 @@ class parse_menu:
 
     # json append
     def add_entry(self, name):
+        file_path = os.path.join(self.parse_json, name)
         check, msg, data = self.load_json_list()
         data = data or []
 
@@ -63,6 +64,7 @@ class parse_menu:
         if not found:
             data.append({
                 "name": name,
+                "file_path": file_path,
                 "timestamp": get_time().isoformat()
             })
 
@@ -78,6 +80,13 @@ class parse_menu:
                 flat.append(item)
         return flat
 
+
+    def load_json(self, file_name):
+        if not os.path.exists(file_name):
+            return False, "File Not Found", ""
+        with open(file_name, "r", encoding="utf-8") as f:
+            return True, "success", json.load(f)
+        
 
     def delete_json(self, target_name):
         with open(self.filter_info, "r", encoding="utf-8") as f:

@@ -14,7 +14,7 @@ def validate_command(command):
     return False
 
 def validate_target(command):
-    if command in ["parse", "filter","all-filter","pcapng"]:
+    if command in ["parse", "filter","all-filter","pcapng", "parse-list"]:
         return True
     return False
 

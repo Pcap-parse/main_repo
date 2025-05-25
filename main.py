@@ -28,11 +28,20 @@ def parse_delete(param):
     return result, msg, data
 
 
-def parse_read(param):
+def parse_read_list(param):
     if len(param) != 0:
         return False, "Invalid parameter", ""
     
     result, msg, data = parse_menu(config).load_json_list()
+    return result, msg, data
+
+
+def parse_read(param):
+    if len(param) == 0:
+        return False, "Invalid parameter", ""
+    file_name = param[0]
+    
+    result, msg, data = parse_menu(config).load_json(file_name)
     return result, msg, data
 
 
@@ -142,6 +151,7 @@ def main():
         },
         "read": {
             "parse": parse_read,
+            "parse-list": parse_read_list,
             "filter": filter_read,
             "all-filter": filter_read_all
         },

@@ -107,8 +107,8 @@ class extract_pcapng:
 
             # 필터링된 결과 파일들을 병합
             merged_output = os.path.splitext(os.path.basename(pcap_file))[0]
-            wireshark_api(self.config).merge_pcaps(results_list, merged_output)
-            return True, "success", ""
+            output_file = wireshark_api(self.config).merge_pcaps(results_list, merged_output)
+            return True, "success", f"{output_file}"
 
         except Exception as e:
             print(f"[ERROR] 분석 중 오류 발생: {e}")
@@ -159,7 +159,6 @@ class extract_pcapng:
                 return f"{key} {op} {value}"
 
         result = cond_pattern.sub(convert_condition, expression)
-        print(result)
         result = clean_logical_operators(result)
 
         # 앞에 ! 다시 붙이기
