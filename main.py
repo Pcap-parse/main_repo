@@ -37,7 +37,7 @@ def parse_read_list(param):
 
 
 def parse_read(param):
-    if len(param) == 0:
+    if len(param) != 1:
         return False, "Invalid parameter", ""
     file_name = param[0]
     
