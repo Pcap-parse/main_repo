@@ -82,9 +82,10 @@ class parse_menu:
 
 
     def load_json(self, file_name):
-        if not os.path.exists(file_name):
+        file_path = os.path.join(self.parse_json, file_name)
+        if not os.path.exists(file_path):
             return False, "File Not Found", ""
-        with open(file_name, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return True, "success", json.load(f)
         
 
