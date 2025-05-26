@@ -9,12 +9,12 @@ from itertools import chain
 import re
 
 def validate_command(command):
-    if command in ["save", "delete", "read", "apply", "modify"]:
+    if command in ["save", "delete", "read", "apply", "modify", "list"]:
         return True
     return False
 
 def validate_target(command):
-    if command in ["parse", "filter","all-filter","pcapng", "parse-list"]:
+    if command in ["parse", "filter", "pcapng"]:
         return True
     return False
 

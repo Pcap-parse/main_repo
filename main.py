@@ -151,9 +151,11 @@ def main():
         },
         "read": {
             "parse": parse_read,
-            "parse-list": parse_read_list,
             "filter": filter_read,
-            "all-filter": filter_read_all
+        },
+        "list": {
+            "parse": parse_read_list,
+            "filter": filter_read_all
         },
         "apply": {
             "filter": filter_apply,
