@@ -101,25 +101,35 @@ def change_list(pcap_list):
         raise TypeError(f"Expected list of lists, got {type(pcap_list).__name__}")
     return list(chain.from_iterable(pcap_list))
 
+
 def clean_logical_operators(expr):
+    def clean_inside_parentheses(m):
+        inner = m.group(1)
+        # 중복된 연산자 축소
+        inner = re.sub(r'(\&\&|\|\|)\s*(\&\&|\|\|)+', r'\1', inner)
+        # 맨 앞/뒤 연산자 제거
+        inner = re.sub(r'^\s*(\&\&|\|\|)\s*', '', inner)
+        inner = re.sub(r'(\&\&|\|\|)\s*$', '', inner)
+        return f'({inner})'
+
     while True:
-        # 중복된 연산자 1개로 축소
-        new_expr = re.sub(r'(\&\&|\|\|)\s*(\&\&|\|\|)+', r'\1', expr)
-        # 맨 앞 연산자 제거
-        new_expr = re.sub(r'^\s*(\&\&|\|\|)\s*', '', new_expr)
-        # 맨 뒤 연산자 제거 (괄호와 공백 제외외 처리)
-        new_expr = re.sub(r'(\&\&|\|\|)\s*$', '', new_expr)
-        # 괄호 바로 앞 연산자 제거 (ex: ... && ) )
-        new_expr = re.sub(r'\(\s*(?:\&\&|\|\|)(?:\s*(?:\&\&|\|\|))*\s*\)', '', new_expr)
+        prev_expr = expr
+
+        # 전체 표현식에서 중복 연산자 및 위치 조정
+        expr = re.sub(r'(\&\&|\|\|)\s*(\&\&|\|\|)+', r'\1', expr)
+        expr = re.sub(r'^\s*(\&\&|\|\|)\s*', '', expr)
+        expr = re.sub(r'(\&\&|\|\|)\s*$', '', expr)
+
+        # 괄호 내부 연산자 정리
+        expr = re.sub(r'\(([^()]+)\)', clean_inside_parentheses, expr)
+
         # 빈 괄호 제거
-        new_expr = re.sub(r'\(\s*\)', '', new_expr)
-        
-        if new_expr == expr:
+        expr = re.sub(r'\(\s*\)', '', expr)
+
+        if expr == prev_expr:
             break
-        expr = new_expr
 
-    # 연산자만 남았을 경우 빈 문자열로
+    # 연산자만 남았을 경우 제거
     if expr.strip() in ['&&', '||']:
-        expr = ''
-
+        return ''
     return expr

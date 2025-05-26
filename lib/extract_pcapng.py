@@ -16,6 +16,7 @@ class extract_pcapng:
         self.ext_pcapng = os.path.join(self.basedir, config['filtered_pcapng_dir'])
         self.filter_list_dir = os.path.join(self.basedir, config['filter_list'])
         self.pcap_file = os.path.join(self.basedir, config['pcapng_data_dir'])
+        self.filtered_list = os.path.join(self.basedir, config["filtered_list"])
         self.entropy_conditions = []
         self.bytes_conditions = []
 
@@ -86,7 +87,7 @@ class extract_pcapng:
     
 
     # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
-    def analyze_pcap_file(self, pcap_file, filter_pkt):
+    def analyze_pcap_file(self, pcap_file, filter_pkt, filter_ids):
         print(f"Splitting {pcap_file}...")
 
         split_pcaps = wireshark_api(self.config).split_pcap(pcap_file)
@@ -107,7 +108,41 @@ class extract_pcapng:
 
             # 필터링된 결과 파일들을 병합
             merged_output = os.path.splitext(os.path.basename(pcap_file))[0]
-            output_file = wireshark_api(self.config).merge_pcaps(results_list, merged_output)
+            idx = 1
+            if os.path.exists(self.filtered_list):
+                with open(self.filtered_list , 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                for item in data:
+                    if item.get('name') == f"{merged_output}_filtered_{idx}.pcapng":
+                        idx = item.get('id') + 1
+
+            output_file = wireshark_api(self.config).merge_pcaps(results_list, merged_output, idx)
+            
+            entry = {
+                "name": os.path.basename(output_file),
+                "timestamp": get_time().isoformat(),
+                "filter_ids": filter_ids,
+                "id": idx
+            }
+            if os.path.exists(self.filtered_list):
+                # JSON 파일 열고 기존 데이터에 entry 추가
+                with open(self.filtered_list, 'r', encoding='utf-8') as f:
+                    try:
+                        data = json.load(f)
+                    except json.JSONDecodeError:
+                        data = []
+
+                # entry 추가
+                data.append(entry)
+
+                # 다시 저장
+                with open(self.filtered_list, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+            else:
+                # 파일이 없으면 entry를 리스트로 감싸서 생성
+                with open(self.filtered_list, 'w', encoding='utf-8') as f:
+                    json.dump([entry], f, indent=2, ensure_ascii=False)
+
             return True, "success", f"{output_file}"
 
         except Exception as e:
@@ -125,8 +160,20 @@ class extract_pcapng:
         negation = expression.strip().startswith('!')
         if negation:
             expression = expression.strip()[1:].strip()
-            # 괄호 제거
-            expression = expression.replace('(', '').replace(')', '')
+            
+            # 첫 괄호 쌍만 제거
+            if expression.startswith('(') and expression.endswith(')'):
+                # 괄호 짝이 맞는 가장 바깥쪽 괄호 한 쌍만 제거
+                depth = 0
+                for i, c in enumerate(expression):
+                    if c == '(':
+                        depth += 1
+                    elif c == ')':
+                        depth -= 1
+                    if depth == 0 and i == len(expression) - 1:
+                        # 올바른 괄호 쌍이 맨 앞과 맨 뒤에 있는 경우만 제거
+                        expression = expression[1:-1].strip()
+                        break
 
         def extract_special_conditions(match):
             key, op, value = match.groups()
@@ -134,11 +181,11 @@ class extract_pcapng:
             condition_str = f"{key} {op} {value}"
             if key == "entropy":
                 self.entropy_conditions.append(condition_str)
-            elif key == "bytes":
-                self.bytes_conditions.append(condition_str)
+            # elif key == "bytes":
+            #     self.bytes_conditions.append(condition_str)
             return ""
 
-        special_cond_pattern = re.compile(r'\b(entropy|bytes)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s\)]+)')
+        special_cond_pattern = re.compile(r'\b(entropy)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s\)]+)')
         expression = special_cond_pattern.sub(extract_special_conditions, expression)
 
         # 나머지 조건 변환
@@ -151,6 +198,8 @@ class extract_pcapng:
                 return f"{ip_field} {op} {value}"
             elif key in ["port_a", "port_b"]:
                 return f"(tcp.port {op} {value} || udp.port {op} {value})"
+            elif key in ["bytes"]:
+                return f"(tcp.len {op} {value} || udp.length {op} {str(int(value)+8)})"
             elif key == "protocol" and op == "==":
                 return f"_ws.col.protocol contains {value}"
             elif key == "packets":
@@ -197,6 +246,7 @@ class extract_pcapng:
         
         combined_filter = " && ".join(f"{f}" for f in matched_filters)
         print(combined_filter)
+        print(self.bytes_conditions)
 
         filter_pkt = (
             "!tcp.analysis.retransmission && "
@@ -209,7 +259,7 @@ class extract_pcapng:
 
         input_folder = os.path.join(self.pcap_file, file_pcap)
         start = get_time()
-        result, msg, data = self.analyze_pcap_file(input_folder, filter_pkt)
+        result, msg, data = self.analyze_pcap_file(input_folder, filter_pkt, ids)
         end = get_time()
 
         print(f'시작시간 : {start.strftime("%H:%M:%S")}')
