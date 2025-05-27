@@ -102,7 +102,9 @@ class parse_menu:
             if removed_count > 0:
                 with open(self.filter_info, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
-            return True, "success", ""
+            with open(self.filter_info, "r", encoding="utf-8") as f:
+                list_data = self.flatten_results(json.load(f))
+            return True, "success", list_data
         else:
             return False, "File Not Found", ""
 
