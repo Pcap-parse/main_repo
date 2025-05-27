@@ -56,7 +56,7 @@ class extract_pcapng:
                 return True
 
             def eval_condition(cond, variables):
-                pattern = r'^(entropy|bytes)\s*(==|!=|>=|<=|>|<)\s*([\d\.]+)$'
+                pattern = r'^(entropy)\s*(==|!=|>=|<=|>|<)\s*([\d\.]+)$'
                 m = re.match(pattern, cond.strip())
                 if not m:
                     # 조건 형식이 맞지 않으면 False 처리
@@ -120,6 +120,7 @@ class extract_pcapng:
             
             entry = {
                 "name": os.path.basename(output_file),
+                "file_path": output_file,
                 "timestamp": get_time().isoformat(),
                 "filter_ids": filter_ids,
                 "id": idx
@@ -143,7 +144,7 @@ class extract_pcapng:
                 with open(self.filtered_list, 'w', encoding='utf-8') as f:
                     json.dump([entry], f, indent=2, ensure_ascii=False)
 
-            return True, "success", f"{output_file}"
+            return True, "success", f"{data}"
 
         except Exception as e:
             print(f"[ERROR] 분석 중 오류 발생: {e}")
@@ -158,7 +159,7 @@ class extract_pcapng:
     def convert_to_wireshark_filter(self, expression: str) -> str:
         # 괄호 제거 전 ! 연산자 위치 파악
         negation = expression.strip().startswith('!')
-        if negation:
+        if re.match(r'^\s*!\s*\(.*\)', expression):
             expression = expression.strip()[1:].strip()
             
             # 첫 괄호 쌍만 제거
@@ -185,7 +186,7 @@ class extract_pcapng:
             #     self.bytes_conditions.append(condition_str)
             return ""
 
-        special_cond_pattern = re.compile(r'\b(entropy)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s\)]+)')
+        special_cond_pattern = re.compile(r'\b(entropy)\s*(==|!=|<=|>=|<|>)\s*([0-9.]+)')
         expression = special_cond_pattern.sub(extract_special_conditions, expression)
 
         # 나머지 조건 변환
@@ -266,3 +267,10 @@ class extract_pcapng:
         print(f'종료시간 : {end.strftime("%H:%M:%S")}')
 
         return result, msg, data
+
+    def load_json(self, file_name):
+        file_path = os.path.join(self.basedir, file_name)
+        if not os.path.exists(file_path):
+            return False, "File Not Found", ""
+        with open(file_path, "r", encoding="utf-8") as f:
+            return True, "success", json.load(f)

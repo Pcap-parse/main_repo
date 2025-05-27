@@ -105,7 +105,7 @@ class filter_menu:
 
     # 명세 조회 함수
     def retrieve_filtered_data(self, file_name, id):
-        print(file_name)
+        # print(file_name)
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
                 data = json.load(f)

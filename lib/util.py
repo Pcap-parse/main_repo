@@ -103,33 +103,40 @@ def change_list(pcap_list):
 
 
 def clean_logical_operators(expr):
-    def clean_inside_parentheses(m):
-        inner = m.group(1)
-        # 중복된 연산자 축소
-        inner = re.sub(r'(\&\&|\|\|)\s*(\&\&|\|\|)+', r'\1', inner)
-        # 맨 앞/뒤 연산자 제거
-        inner = re.sub(r'^\s*(\&\&|\|\|)\s*', '', inner)
-        inner = re.sub(r'(\&\&|\|\|)\s*$', '', inner)
-        return f'({inner})'
+    def clean_and_edges(text):
+        # 앞뒤 또는 단독 && 제거
+        text = re.sub(r'^\s*&&\s*', '', text)
+        text = re.sub(r'\s*&&\s*$', '', text)
+        if re.fullmatch(r'\s*&&\s*', text):
+            return ''
+        return text
 
-    while True:
-        prev_expr = expr
+    def process(text):
+        result = ''
+        stack = []
+        start = 0
 
-        # 전체 표현식에서 중복 연산자 및 위치 조정
-        expr = re.sub(r'(\&\&|\|\|)\s*(\&\&|\|\|)+', r'\1', expr)
-        expr = re.sub(r'^\s*(\&\&|\|\|)\s*', '', expr)
-        expr = re.sub(r'(\&\&|\|\|)\s*$', '', expr)
+        i = 0
+        while i < len(text):
+            if text[i] == '(':
+                if not stack:
+                    result += text[start:i]
+                    start = i
+                stack.append(i)
+            elif text[i] == ')':
+                stack.pop()
+                if not stack:
+                    # 괄호 내부 추출 및 정리
+                    inner = text[start + 1:i]
+                    cleaned_inner = process(inner)
+                    cleaned_inner = clean_and_edges(cleaned_inner)
+                    if cleaned_inner.strip():  # 빈 문자열이 아닌 경우에만 괄호 유지
+                        result += f'({cleaned_inner})'
+                    # 빈 괄호는 아예 제거
+                    start = i + 1
+            i += 1
 
-        # 괄호 내부 연산자 정리
-        expr = re.sub(r'\(([^()]+)\)', clean_inside_parentheses, expr)
+        result += text[start:]
+        return clean_and_edges(result)
 
-        # 빈 괄호 제거
-        expr = re.sub(r'\(\s*\)', '', expr)
-
-        if expr == prev_expr:
-            break
-
-    # 연산자만 남았을 경우 제거
-    if expr.strip() in ['&&', '||']:
-        return ''
-    return expr
+    return process(expr)

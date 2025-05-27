@@ -9,7 +9,7 @@ config = {
     'pcapng_data_dir': 'pcaps',
     'filtered_pcapng_dir': 'pcapng_extract',
     'filter_list': 'filter_list.json',
-    'filtered_list': 'filtered_list.json'
+    'filtered_list': 'extract_list.json'
 }
 
 operator_precedence = {

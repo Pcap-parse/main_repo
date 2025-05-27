@@ -138,6 +138,15 @@ def save_pcapng(param):
     return result, msg, data
 
 
+def pcapng_read_list(param):
+    if len(param) != 0:
+        return False, "Invalid parameter", []
+    
+    list_filename = "extract_list.json" # pcapng_list 파일
+
+    result, msg, data = extract_pcapng(config).load_json(list_filename)
+    return result, msg, data
+
 def main():
     handler = {
         "save": {
@@ -155,7 +164,8 @@ def main():
         },
         "list": {
             "parse": parse_read_list,
-            "filter": filter_read_all
+            "filter": filter_read_all,
+            "pcapng": pcapng_read_list
         },
         "apply": {
             "filter": filter_apply,
