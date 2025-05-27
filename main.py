@@ -47,14 +47,15 @@ def parse_read(param):
 
 def filter_save(param):
     # 파라미터 수 검증
-    if len(param) != 2:
+    if len(param) != 3:
         return False, "Invalid parameter", []
     
     # 파라미터 정의
     parse_filename = f"{param[0]}.json"
-    filter_str = param[1]
+    filter_name = param[1]
+    filter_str = param[2]
 
-    result, msg, data = filter_menu(config).save_filtered_data(parse_filename, filter_str)
+    result, msg, data = filter_menu(config).save_filtered_data(parse_filename, filter_name, filter_str)
     return result, msg, data
 
 

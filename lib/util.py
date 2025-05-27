@@ -77,9 +77,10 @@ def convert_value(value):
             return value
     return value
 
-def entry_format(name, condition, id):
+def entry_format(name, filter_name, condition, id):
     entry = {
         "name": name,
+        "filter_name": filter_name,
         "filter": condition,
         "timestamp": get_time().isoformat(),
         "id": id

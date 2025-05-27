@@ -43,7 +43,7 @@ class filter_menu:
 
 
     # 필터 적용 결과 저장 함수
-    def save_filtered_data(self, name, condition):
+    def save_filtered_data(self, name, filter_name, condition):
         data = []
 
         # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
@@ -68,7 +68,7 @@ class filter_menu:
         new_id = max_id + 1
 
         # 새 항목 추가
-        new_entry = entry_format(name, condition, new_id)
+        new_entry = entry_format(name, filter_name, condition, new_id)
         data.append(new_entry)
 
         # 파일에 저장

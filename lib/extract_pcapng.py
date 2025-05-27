@@ -87,7 +87,7 @@ class extract_pcapng:
     
 
     # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
-    def analyze_pcap_file(self, pcap_file, filter_pkt, filter_ids):
+    def analyze_pcap_file(self, pcap_file, filter_pkt, file_name, filter_ids):
         print(f"Splitting {pcap_file}...")
 
         split_pcaps = wireshark_api(self.config).split_pcap(pcap_file)
@@ -121,6 +121,7 @@ class extract_pcapng:
             entry = {
                 "name": os.path.basename(output_file),
                 "file_path": output_file,
+                "feature_name": file_name,
                 "timestamp": get_time().isoformat(),
                 "filter_ids": filter_ids,
                 "id": idx
@@ -260,7 +261,7 @@ class extract_pcapng:
 
         input_folder = os.path.join(self.pcap_file, file_pcap)
         start = get_time()
-        result, msg, data = self.analyze_pcap_file(input_folder, filter_pkt, ids)
+        result, msg, data = self.analyze_pcap_file(input_folder, filter_pkt, file_json, ids)
         end = get_time()
 
         print(f'시작시간 : {start.strftime("%H:%M:%S")}')
