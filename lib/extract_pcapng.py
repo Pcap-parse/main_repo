@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from lib.wireshark_api import wireshark_api
 from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte, clean_logical_operators
 from config import ops
+from collections import Counter
 
 
 class extract_pcapng:
@@ -18,67 +19,77 @@ class extract_pcapng:
         self.pcap_file = os.path.join(self.basedir, config['pcapng_data_dir'])
         self.filtered_list = os.path.join(self.basedir, config["filtered_list"])
         self.entropy_conditions = []
-        self.bytes_conditions = []
 
 
-    def ext_files(self, pcap_file, filter_pkt):
-        results = wireshark_api(self.config).extract_pcap(pcap_file, filter_pkt)
-        lines = results.splitlines()
-        matched_frames = []
-        results_list = []
+    def ext_files(self, pcap_file, combined_pairs):
+        frame_counter = Counter()
+        num_pairs = len(combined_pairs)
 
-        for line in lines:
-            fields = line.split('\t')  # 각 필드를 탭으로 분리
-            if len(fields) != 3:
-                continue
-            frame_number = fields[0]
-            payload = fields[1] if fields[1] else fields[2]
-            satisfied = True
+        for filter_pkt, entropy_filter in combined_pairs:
+            results = wireshark_api(self.config).extract_pcap(pcap_file, filter_pkt)
+            lines = results.splitlines()
 
-            if payload:
-                payload = hex_to_byte(payload)
-                payload_len = len(payload)
-                payload_entropy = calculate_entropy(payload)
-                satisfied = self._check_conditions(payload_entropy, payload_len)
+            for line in lines:
+                fields = line.split('\t')
+                if len(fields) != 3:
+                    continue
 
-            if satisfied:
-                matched_frames.append(frame_number)
+                frame_number = fields[0]
+                payload = fields[1] if fields[1] else fields[2]
+                satisfied = True
 
-        # print(len(matched_frames))
-        results_list = wireshark_api(self.config).extract_matched_frames(pcap_file, matched_frames)
+                if payload:
+                    payload = hex_to_byte(payload)
+                    payload_entropy = calculate_entropy(payload)
+                    satisfied = self._check_conditions(payload_entropy, entropy_filter)
+
+                if satisfied:
+                    frame_counter[frame_number] += 1
+
+        # 쌍이 1개면 그냥 다 사용
+        if num_pairs == 1:
+            res_list = list(frame_counter.keys())
+        else:
+            # 모든 쌍에 공통으로 등장한 frame만 사용
+            res_list = [frame for frame, count in frame_counter.items() if count == num_pairs]
+
+        print(res_list)
+
+        if res_list:
+            results_list = wireshark_api(self.config).extract_matched_frames(pcap_file, res_list)
+        else:
+            results_list = None  # 혹은 빈 리스트 등 적절한 기본값
 
         return results_list
 
 
-    def _check_conditions(self, entropy_val, byte_len):
+    def _check_conditions(self, entropy_val, entropy_filter):
         try:
-            if not self.entropy_conditions and not self.bytes_conditions:
+            if not entropy_filter:
                 return True
 
             def eval_condition(cond, variables):
                 pattern = r'^(entropy)\s*(==|!=|>=|<=|>|<)\s*([\d\.]+)$'
-                m = re.match(pattern, cond.strip())
+                m = re.match(pattern.strip(), cond.strip())
                 if not m:
-                    # 조건 형식이 맞지 않으면 False 처리
                     return False
-                
+
                 var_name, operator_str, value_str = m.groups()
                 value = float(value_str)
                 actual = variables[var_name]
-                
+
                 if operator_str not in ops:
                     return False
-                
+
                 return ops[operator_str](actual, value)
-            
-            for cond in self.entropy_conditions:
-                if not eval_condition(cond, {'entropy': entropy_val, 'bytes': byte_len}):
+
+            # '&&' 로 연결된 조건들을 분할
+            conditions = [c.strip() for c in entropy_filter.split("&&")]
+
+            for cond in conditions:
+                if not eval_condition(cond, {'entropy': entropy_val}):
                     return False
-            
-            for cond in self.bytes_conditions:
-                if not eval_condition(cond, {'entropy': entropy_val, 'bytes': byte_len}):
-                    return False
-            
+
             return True
 
         except Exception as e:
@@ -177,18 +188,18 @@ class extract_pcapng:
                         expression = expression[1:-1].strip()
                         break
 
-        def extract_special_conditions(match):
-            key, op, value = match.groups()
-            value = value.strip('"')
-            condition_str = f"{key} {op} {value}"
-            if key == "entropy":
-                self.entropy_conditions.append(condition_str)
-            # elif key == "bytes":
-            #     self.bytes_conditions.append(condition_str)
-            return ""
+        # def extract_special_conditions(match):
+        #     key, op, value = match.groups()
+        #     value = value.strip('"')
+        #     condition_str = f"{key} {op} {value}"
+        #     if key == "entropy":
+        #         self.entropy_conditions.append(condition_str)
+        #     # elif key == "bytes":
+        #     #     self.bytes_conditions.append(condition_str)
+        #     return ""
 
-        special_cond_pattern = re.compile(r'\b(entropy)\s*(==|!=|<=|>=|<|>)\s*([0-9.]+)')
-        expression = special_cond_pattern.sub(extract_special_conditions, expression)
+        # special_cond_pattern = re.compile(r'\b(entropy)\s*(==|!=|<=|>=|<|>)\s*([0-9.]+)')
+        # expression = special_cond_pattern.sub(extract_special_conditions, expression)
 
         # 나머지 조건 변환
         cond_pattern = re.compile(r'(\w+)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s\)]+)')
@@ -228,11 +239,13 @@ class extract_pcapng:
             return False, "File Not Found", ""
 
         matched_filters = []
+        matched_entropy = []
 
         for item in data:
             if item.get("name") == file_json and item.get("id") in ids:
                 if "filter" in item:
                     filters = item["filter"]
+                    matched_entropy.append(item["entropy_filter"])
 
                     # 문자열이면 리스트로 변환
                     if isinstance(filters, str):
@@ -246,22 +259,30 @@ class extract_pcapng:
         if not matched_filters:
             return False, "No Matching Filters Found", ""
         
-        combined_filter = " && ".join(f"{f}" for f in matched_filters)
-        print(combined_filter)
-        print(self.bytes_conditions)
+        # combined_filter = " && ".join(f"{f}" for f in matched_filters)
+        # print(combined_filter)
 
-        filter_pkt = (
+        base_filter = (
             "!tcp.analysis.retransmission && "
             "!tcp.analysis.fast_retransmission && "
             "!tcp.analysis.spurious_retransmission && "
             "!_ws.malformed && "
-            "(tcp.srcport || udp.srcport) &&"
-            f"{combined_filter}"
+            "(tcp.srcport || udp.srcport) && "
         )
 
+        combined_pairs = []
+
+        for filt, entropy in zip(matched_filters, matched_entropy):
+            # 각 필터를 base_filter와 결합
+            filter_pkt = base_filter + filt
+
+            # (filter_pkt, entropy) 쌍을 리스트에 저장
+            combined_pairs.append((filter_pkt, entropy))
+
+        # print(combined_pairs)
         input_folder = os.path.join(self.pcap_file, file_pcap)
         start = get_time()
-        result, msg, data = self.analyze_pcap_file(input_folder, filter_pkt, file_json, ids)
+        result, msg, data = self.analyze_pcap_file(input_folder, combined_pairs, file_json, ids)
         end = get_time()
 
         print(f'시작시간 : {start.strftime("%H:%M:%S")}')

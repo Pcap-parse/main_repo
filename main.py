@@ -47,15 +47,16 @@ def parse_read(param):
 
 def filter_save(param):
     # 파라미터 수 검증
-    if len(param) != 3:
+    if len(param) != 4:
         return False, "Invalid parameter", []
     
     # 파라미터 정의
     parse_filename = f"{param[0]}.json"
     filter_name = param[1]
     filter_str = param[2]
+    entropy_str = param[3] if param[3] else ""
 
-    result, msg, data = filter_menu(config).save_filtered_data(parse_filename, filter_name, filter_str)
+    result, msg, data = filter_menu(config).save_filtered_data(parse_filename, filter_name, filter_str, entropy_str)
     return result, msg, data
 
 
@@ -96,14 +97,15 @@ def filter_read_all(param):
 
 def filter_apply(param):
     # 파라미터 수 검증
-    if len(param) != 2:
+    if len(param) != 3:
         return False, "Invalid parameter", {}
     
     # 파라미터 정의
     parse_filename = f"{param[0]}.json"
     filter_str = param[1]
+    entropy_str = param[2]
 
-    result, msg, data = filter_menu(config).filter_data(parse_filename, filter_str)
+    result, msg, data = filter_menu(config).filter_data(parse_filename, filter_str, entropy_str)
     return result, msg, data
     
 
@@ -116,8 +118,9 @@ def filter_modify(param):
     parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
     filter_str = param[2]
+    entropy_str = param[3]
 
-    result, msg, data = filter_menu(config).modify_filtered_data(parse_filename, filter_id, filter_str)
+    result, msg, data = filter_menu(config).modify_filtered_data(parse_filename, filter_id, filter_str, entropy_str)
     return result, msg, data
 
 

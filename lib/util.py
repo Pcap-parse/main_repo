@@ -77,11 +77,12 @@ def convert_value(value):
             return value
     return value
 
-def entry_format(name, filter_name, condition, id):
+def entry_format(name, filter_name, condition, entropy_condition, id):
     entry = {
         "name": name,
         "filter_name": filter_name,
         "filter": condition,
+        "entropy_filter": entropy_condition,
         "timestamp": get_time().isoformat(),
         "id": id
     }
@@ -105,10 +106,10 @@ def change_list(pcap_list):
 
 def clean_logical_operators(expr):
     def clean_and_edges(text):
-        # 앞뒤 또는 단독 && 제거
-        text = re.sub(r'^\s*&&\s*', '', text)
-        text = re.sub(r'\s*&&\s*$', '', text)
-        if re.fullmatch(r'\s*&&\s*', text):
+        # 앞뒤 또는 단독 &&, || 제거
+        text = re.sub(r'^\s*(&&|\|\|)\s*', '', text)
+        text = re.sub(r'\s*(&&|\|\|)\s*$', '', text)
+        if re.fullmatch(r'\s*(&&|\|\|)\s*', text):
             return ''
         return text
 
@@ -127,13 +128,19 @@ def clean_logical_operators(expr):
             elif text[i] == ')':
                 stack.pop()
                 if not stack:
-                    # 괄호 내부 추출 및 정리
                     inner = text[start + 1:i]
                     cleaned_inner = process(inner)
                     cleaned_inner = clean_and_edges(cleaned_inner)
-                    if cleaned_inner.strip():  # 빈 문자열이 아닌 경우에만 괄호 유지
+
+                    # 빈 괄호 처리
+                    if cleaned_inner.strip():
                         result += f'({cleaned_inner})'
-                    # 빈 괄호는 아예 제거
+                    else:
+                        # !() 패턴 확인
+                        if result.rstrip().endswith('!'):
+                            # !와 빈 괄호 모두 제거
+                            result = result.rstrip()[:-1]
+                        # 괄호는 아예 제거
                     start = i + 1
             i += 1
 

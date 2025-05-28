@@ -15,7 +15,7 @@ class filter_menu:
     
     
     # 필터 값 입력 적용 함수
-    def filter_data(self, name, condition_str):
+    def filter_data(self, name, condition_str, entropy_str):
 
         file_path = os.path.join(self.result_dir, name)
         if not os.path.exists(file_path):
@@ -24,7 +24,7 @@ class filter_menu:
         with open(file_path, 'r') as file:
             data = json.load(file)
             
-        condition_str = re.sub(r"(\'|\")", "", condition_str)
+        condition_str = re.sub(r"(\'|\")", "", condition_str + "&&" + entropy_str)
         tokens = filter_conversations().tokenize_condition(condition_str)
         postfix_tokens = filter_conversations().convert_to_postfix(tokens)
 
@@ -43,7 +43,7 @@ class filter_menu:
 
 
     # 필터 적용 결과 저장 함수
-    def save_filtered_data(self, name, filter_name, condition):
+    def save_filtered_data(self, name, filter_name, condition, entropy_condition):
         data = []
 
         # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
@@ -68,7 +68,7 @@ class filter_menu:
         new_id = max_id + 1
 
         # 새 항목 추가
-        new_entry = entry_format(name, filter_name, condition, new_id)
+        new_entry = entry_format(name, filter_name, condition, entropy_condition, new_id)
         data.append(new_entry)
 
         # 파일에 저장
@@ -79,8 +79,8 @@ class filter_menu:
 
 
     # 필터 수정 api
-    def modify_filtered_data(self, name, id, filter):
-        new_entry = entry_format(name, filter, id)
+    def modify_filtered_data(self, name, id, filter, entropy_filter):
+        # new_entry = entry_format(name, filter, id)
 
         # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
         if os.path.exists(self.filter_list_dir):
@@ -90,8 +90,9 @@ class filter_menu:
             return False, "File Not Found", ""
 
         for i, item in enumerate(data):
-            if item.get("name") == new_entry["name"] and item.get("id") == new_entry["id"]:
-                data[i] = new_entry
+            if item.get("name") == name and item.get("id") == id:
+                data[i]["filter"] = filter
+                data[i]["entropy_filter"] = entropy_filter
                 break
         else:
             return False, "Entry Not Found", ""
@@ -114,11 +115,12 @@ class filter_menu:
             for entry in data:
                 if entry.get("name") == file_name and entry.get("id") == id:
                     condition = entry.get("filter")
+                    entropy_cond = entry.get("entropy_filter")
                     break
             if condition is None:
                 return False, "Entry Not Found", {}
             # print(condition)
-            _, _, data = self.filter_data(file_name, condition)
+            _, _, data = self.filter_data(file_name, condition, entropy_cond)
             return True, "Success", data
         
         else:
