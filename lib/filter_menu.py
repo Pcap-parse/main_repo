@@ -24,7 +24,8 @@ class filter_menu:
         with open(file_path, 'r') as file:
             data = json.load(file)
             
-        condition_str = re.sub(r"(\'|\")", "", condition_str + "&&" + entropy_str)
+        condition_str = condition_str + "&&" + entropy_str if entropy_str else condition_str
+        condition_str = re.sub(r"(\'|\")", "", condition_str)
         tokens = filter_conversations().tokenize_condition(condition_str)
         postfix_tokens = filter_conversations().convert_to_postfix(tokens)
 
@@ -57,7 +58,8 @@ class filter_menu:
 
         # 동일한 name + filter 조건이 이미 존재하면 추가하지 않음
         for item in data:
-            if item.get("name") == name and item.get("filter") == condition:
+            if (item.get("name") == name and item.get("filter") == condition and
+                item.get("entropy_filter") == entropy_condition):
                 return False, "Existed data", data
 
         # 같은 name 중 가장 큰 id 찾기

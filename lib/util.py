@@ -148,3 +148,27 @@ def clean_logical_operators(expr):
         return clean_and_edges(result)
 
     return process(expr)
+
+def extract_num_and_op(s):
+    # 숫자만 추출 (정수)
+    numbers = list(map(int, re.findall(r'\d+', s)))
+    # 연산자만 추출 (&&, ||)
+    operators = re.findall(r'&&|\|\|', s)
+    return numbers, operators
+
+def apply_logical_ops(sets, operators):
+    if not sets:
+        return []
+
+    print(sets)
+    result = sets[0].copy()
+
+    for i, op in enumerate(operators):
+        next_set = sets[i + 1]
+
+        if op == '&&':
+            result = result & next_set  # 교집합
+        elif op == '||':
+            result = result | next_set  # 합집합
+
+    return list(result)

@@ -4,6 +4,7 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from lib.util import normalize_protocol, calculate_entropy, hex_to_byte
 from lib.wireshark_api import wireshark_api
+from config import filter_pkt_default
 
 
 class parse_pcapng:
@@ -84,15 +85,7 @@ class parse_pcapng:
             print(f"분할된 파일이 없습니다: {pcap_file}")
             return False, "No Splitted File", ""
 
-        filter_pkt = (
-            "!tcp.analysis.retransmission && "
-            "!tcp.analysis.fast_retransmission && "
-            "!tcp.analysis.spurious_retransmission && "
-            "!_ws.malformed && "
-            "(tcp.srcport || udp.srcport)"
-        )
-
-        args = [(pcap, filter_pkt) for pcap in split_pcaps]
+        args = [(pcap, filter_pkt_default) for pcap in split_pcaps]
 
         # 멀티프로세싱을 사용하여 분할된 pcap 파일 처리
         with Pool(processes=cpu_count()) as pool:

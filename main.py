@@ -111,7 +111,7 @@ def filter_apply(param):
 
 def filter_modify(param):
     # 파라미터 수 검증
-    if len(param) != 3:
+    if len(param) != 4:
         return False, "Invalid parameter", []
     
     # 파라미터 정의
@@ -131,14 +131,9 @@ def save_pcapng(param):
 
     # 파라미터 정의
     parse_filename = f"{param[0]}"
-    
-    try:
-        # 쉼표로 구분된 ID들을 리스트로 변환
-        filter_ids = list(map(int, param[1].split(',')))
-    except ValueError:
-        return False, "Invalid filter ID format", []
+    ids_and_ops = param[1]
 
-    result, msg, data = extract_pcapng(config).start(parse_filename, filter_ids)
+    result, msg, data = extract_pcapng(config).start(parse_filename, ids_and_ops)
     return result, msg, data
 
 

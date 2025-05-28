@@ -4,9 +4,8 @@ import re
 from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from lib.wireshark_api import wireshark_api
-from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte, clean_logical_operators
-from config import ops
-from collections import Counter
+from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte, clean_logical_operators, apply_logical_ops, extract_num_and_op
+from config import ops, filter_pkt_default
 
 
 class extract_pcapng:
@@ -21,13 +20,14 @@ class extract_pcapng:
         self.entropy_conditions = []
 
 
-    def ext_files(self, pcap_file, combined_pairs):
-        frame_counter = Counter()
-        num_pairs = len(combined_pairs)
+    def ext_files(self, pcap_file, combined_pairs, operators):
+        frame_sets = []  # 각 쌍에 대한 frame 결과 집합을 저장
 
         for filter_pkt, entropy_filter in combined_pairs:
             results = wireshark_api(self.config).extract_pcap(pcap_file, filter_pkt)
             lines = results.splitlines()
+
+            frame_set = set()
 
             for line in lines:
                 fields = line.split('\t')
@@ -44,14 +44,15 @@ class extract_pcapng:
                     satisfied = self._check_conditions(payload_entropy, entropy_filter)
 
                 if satisfied:
-                    frame_counter[frame_number] += 1
+                    frame_set.add(frame_number)
 
-        # 쌍이 1개면 그냥 다 사용
-        if num_pairs == 1:
-            res_list = list(frame_counter.keys())
-        else:
-            # 모든 쌍에 공통으로 등장한 frame만 사용
-            res_list = [frame for frame, count in frame_counter.items() if count == num_pairs]
+            frame_sets.append(frame_set)
+
+        # 연산자 적용
+        res_set = apply_logical_ops(frame_sets, operators)
+
+        # 최종 결과 리스트
+        res_list = list(res_set)
 
         print(res_list)
 
@@ -98,7 +99,7 @@ class extract_pcapng:
     
 
     # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
-    def analyze_pcap_file(self, pcap_file, filter_pkt, file_name, filter_ids):
+    def analyze_pcap_file(self, pcap_file, filter_pkt, file_name, operators, ids_and_ops):
         print(f"Splitting {pcap_file}...")
 
         split_pcaps = wireshark_api(self.config).split_pcap(pcap_file)
@@ -109,7 +110,7 @@ class extract_pcapng:
             return False, "No Splitted File", ""
         
         base_name= os.path.splitext(os.path.basename(pcap_file))[0]
-        args = [(pcap, filter_pkt) for pcap in split_pcaps]
+        args = [(pcap, filter_pkt, operators) for pcap in split_pcaps]
         results_list = []
 
         try:
@@ -134,7 +135,7 @@ class extract_pcapng:
                 "file_path": output_file,
                 "feature_name": file_name,
                 "timestamp": get_time().isoformat(),
-                "filter_ids": filter_ids,
+                "filter_ids": ids_and_ops,
                 "id": idx
             }
             if os.path.exists(self.filtered_list):
@@ -188,19 +189,6 @@ class extract_pcapng:
                         expression = expression[1:-1].strip()
                         break
 
-        # def extract_special_conditions(match):
-        #     key, op, value = match.groups()
-        #     value = value.strip('"')
-        #     condition_str = f"{key} {op} {value}"
-        #     if key == "entropy":
-        #         self.entropy_conditions.append(condition_str)
-        #     # elif key == "bytes":
-        #     #     self.bytes_conditions.append(condition_str)
-        #     return ""
-
-        # special_cond_pattern = re.compile(r'\b(entropy)\s*(==|!=|<=|>=|<|>)\s*([0-9.]+)')
-        # expression = special_cond_pattern.sub(extract_special_conditions, expression)
-
         # 나머지 조건 변환
         cond_pattern = re.compile(r'(\w+)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s\)]+)')
         def convert_condition(match):
@@ -229,9 +217,11 @@ class extract_pcapng:
 
         return result
 
-    def start(self, file_name, ids):
+    def start(self, file_name, ids_and_ops):
         file_json = f"{file_name}.json"
         file_pcap = f"{file_name}.pcapng"
+        ids, operators = extract_num_and_op(ids_and_ops)
+        
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -258,23 +248,12 @@ class extract_pcapng:
 
         if not matched_filters:
             return False, "No Matching Filters Found", ""
-        
-        # combined_filter = " && ".join(f"{f}" for f in matched_filters)
-        # print(combined_filter)
-
-        base_filter = (
-            "!tcp.analysis.retransmission && "
-            "!tcp.analysis.fast_retransmission && "
-            "!tcp.analysis.spurious_retransmission && "
-            "!_ws.malformed && "
-            "(tcp.srcport || udp.srcport) && "
-        )
 
         combined_pairs = []
 
         for filt, entropy in zip(matched_filters, matched_entropy):
             # 각 필터를 base_filter와 결합
-            filter_pkt = base_filter + filt
+            filter_pkt = filter_pkt_default + " &&" + filt
 
             # (filter_pkt, entropy) 쌍을 리스트에 저장
             combined_pairs.append((filter_pkt, entropy))
@@ -282,7 +261,7 @@ class extract_pcapng:
         # print(combined_pairs)
         input_folder = os.path.join(self.pcap_file, file_pcap)
         start = get_time()
-        result, msg, data = self.analyze_pcap_file(input_folder, combined_pairs, file_json, ids)
+        result, msg, data = self.analyze_pcap_file(input_folder, combined_pairs, file_json, operators, ids_and_ops)
         end = get_time()
 
         print(f'시작시간 : {start.strftime("%H:%M:%S")}')
