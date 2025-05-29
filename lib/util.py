@@ -77,12 +77,11 @@ def convert_value(value):
             return value
     return value
 
-def entry_format(name, filter_name, condition, entropy_condition, id):
+def entry_format(name, filter_name, condition, id):
     entry = {
         "name": name,
         "filter_name": filter_name,
         "filter": condition,
-        "entropy_filter": entropy_condition,
         "timestamp": get_time().isoformat(),
         "id": id
     }
@@ -160,7 +159,7 @@ def apply_logical_ops(sets, operators):
     if not sets:
         return []
 
-    print(sets)
+    # print(sets)
     result = sets[0].copy()
 
     for i, op in enumerate(operators):

@@ -1,5 +1,5 @@
 import sys
-from lib.util import validate_command, validate_target, response
+from lib.util import validate_command, validate_target, response, extract_num_and_op
 from lib.parse_menu import parse_menu
 from lib.filter_menu import filter_menu
 from lib.extract_pcapng import extract_pcapng
@@ -47,16 +47,16 @@ def parse_read(param):
 
 def filter_save(param):
     # 파라미터 수 검증
-    if len(param) != 4:
+    if len(param) != 3:
         return False, "Invalid parameter", []
     
     # 파라미터 정의
     parse_filename = f"{param[0]}.json"
     filter_name = param[1]
     filter_str = param[2]
-    entropy_str = param[3] if param[3] else ""
+    # entropy_str = param[3] if param[3] else ""
 
-    result, msg, data = filter_menu(config).save_filtered_data(parse_filename, filter_name, filter_str, entropy_str)
+    result, msg, data = filter_menu(config).save_filtered_data(parse_filename, filter_name, filter_str)
     return result, msg, data
 
 
@@ -88,39 +88,26 @@ def filter_read(param):
 
 def filter_read_all(param):
     # 파라미터 수 검증
-    if len(param) != 0:
+    if len(param) not in (0, 1):
         return False, "Invalid parameter", []
 
-    result, msg, data = filter_menu(config).all_filtered_data()
+    name = f"{param[0]}.json" if len(param) == 1 and param[0] else None
+
+    result, msg, data = filter_menu(config).all_filtered_data(name)
     return result, msg, data
 
-
-def filter_apply(param):
-    # 파라미터 수 검증
-    if len(param) != 3:
-        return False, "Invalid parameter", {}
-    
-    # 파라미터 정의
-    parse_filename = f"{param[0]}.json"
-    filter_str = param[1]
-    entropy_str = param[2]
-
-    result, msg, data = filter_menu(config).filter_data(parse_filename, filter_str, entropy_str)
-    return result, msg, data
-    
 
 def filter_modify(param):
     # 파라미터 수 검증
-    if len(param) != 4:
+    if len(param) != 3:
         return False, "Invalid parameter", []
     
     # 파라미터 정의
     parse_filename = f"{param[0]}.json"
     filter_id = int(param[1])
     filter_str = param[2]
-    entropy_str = param[3]
 
-    result, msg, data = filter_menu(config).modify_filtered_data(parse_filename, filter_id, filter_str, entropy_str)
+    result, msg, data = filter_menu(config).modify_filtered_data(parse_filename, filter_id, filter_str)
     return result, msg, data
 
 
@@ -165,9 +152,6 @@ def main():
             "parse": parse_read_list,
             "filter": filter_read_all,
             "pcapng": pcapng_read_list
-        },
-        "apply": {
-            "filter": filter_apply,
         },
         "modify": {
             "filter": filter_modify,

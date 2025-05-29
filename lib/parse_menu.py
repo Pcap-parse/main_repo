@@ -8,8 +8,9 @@ class parse_menu:
         self.config = config
         self.basedir = config['basedir']
         self.parse_json = os.path.join(self.basedir, config['parse_result_dir'])
-        self.filter_info = os.path.join(self.basedir, config['parse_list'])
+        self.parse_filter_info = os.path.join(self.basedir, config['parse_list'])
         self.split_dir = os.path.join(self.basedir, config['split_pcaps'])
+        self.filter_list_dir = os.path.join(self.basedir, config['filter_list'])
 
 
     def start(self, file_name):
@@ -35,14 +36,14 @@ class parse_menu:
 
     # json 조회
     def load_json_list(self):
-        if not os.path.exists(self.filter_info):
+        if not os.path.exists(self.parse_filter_info):
             return False, "File Not Found", ""
-        with open(self.filter_info, "r", encoding="utf-8") as f:
+        with open(self.parse_filter_info, "r", encoding="utf-8") as f:
             return True, "success", self.flatten_results(json.load(f))
             
         
     def save_json_list(self, data):
-        with open(self.filter_info, "w", encoding="utf-8") as f:
+        with open(self.parse_filter_info, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
 
@@ -90,7 +91,7 @@ class parse_menu:
         
 
     def delete_json(self, target_name):
-        with open(self.filter_info, "r", encoding="utf-8") as f:
+        with open(self.parse_filter_info, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         target_file_path = os.path.join(self.parse_json, target_name)
@@ -100,9 +101,15 @@ class parse_menu:
             data = [entry for entry in data if entry.get("name") != target_name]
             removed_count = original_len - len(data)
             if removed_count > 0:
-                with open(self.filter_info, "w", encoding="utf-8") as f:
+                with open(self.parse_filter_info, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
-            with open(self.filter_info, "r", encoding="utf-8") as f:
+                with open(self.filter_list_dir, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    filtered_data = [item for item in data if item.get("name") != target_name]
+                with open(self.filter_list_dir, "w", encoding="utf-8") as f:
+                    json.dump(filtered_data, f, indent=4, ensure_ascii=False)
+                    
+            with open(self.parse_filter_info, "r", encoding="utf-8") as f:
                 list_data = self.flatten_results(json.load(f))
             return True, "success", list_data
         else:

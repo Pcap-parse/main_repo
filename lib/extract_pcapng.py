@@ -54,12 +54,10 @@ class extract_pcapng:
         # 최종 결과 리스트
         res_list = list(res_set)
 
-        print(res_list)
-
         if res_list:
             results_list = wireshark_api(self.config).extract_matched_frames(pcap_file, res_list)
         else:
-            results_list = None  # 혹은 빈 리스트 등 적절한 기본값
+            results_list = []  # 혹은 빈 리스트 등 적절한 기본값
 
         return results_list
 
@@ -84,10 +82,7 @@ class extract_pcapng:
 
                 return ops[operator_str](actual, value)
 
-            # '&&' 로 연결된 조건들을 분할
-            conditions = [c.strip() for c in entropy_filter.split("&&")]
-
-            for cond in conditions:
+            for cond in entropy_filter:
                 if not eval_condition(cond, {'entropy': entropy_val}):
                     return False
 
@@ -157,7 +152,7 @@ class extract_pcapng:
                 with open(self.filtered_list, 'w', encoding='utf-8') as f:
                     json.dump([entry], f, indent=2, ensure_ascii=False)
 
-            return True, "success", f"{data}"
+            return True, "success", f"{output_file}"
 
         except Exception as e:
             print(f"[ERROR] 분석 중 오류 발생: {e}")
@@ -189,8 +184,19 @@ class extract_pcapng:
                         expression = expression[1:-1].strip()
                         break
 
+        def extract_special_conditions(match):
+            key, op, value = match.groups()
+            value = value.strip('"')
+            condition_str = f"{key} {op} {value}"
+            if key == "entropy":
+                self.entropy_conditions.append(condition_str)
+            return ""
+
+        special_cond_pattern = re.compile(r'\b(entropy)\s*(==|!=|<=|>=|<|>)\s*([0-9.]+)')
+        expression = special_cond_pattern.sub(extract_special_conditions, expression)
+
         # 나머지 조건 변환
-        cond_pattern = re.compile(r'(\w+)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s\)]+)')
+        cond_pattern = re.compile(r'(\w+)\s*(==|!=|<=|>=|<|>)\s*("[^"]*"|[^\s&|)]+)')
         def convert_condition(match):
             key, op, value = match.groups()
             value = value.strip('"')
@@ -229,29 +235,27 @@ class extract_pcapng:
             return False, "File Not Found", ""
 
         matched_filters = []
-        matched_entropy = []
+        combined_pairs = []
 
         for item in data:
             if item.get("name") == file_json and item.get("id") in ids:
                 if "filter" in item:
                     filters = item["filter"]
-                    matched_entropy.append(item["entropy_filter"])
 
                     # 문자열이면 리스트로 변환
                     if isinstance(filters, str):
                         filters = [filters]
 
                     for filt in filters:
+                        self.entropy_conditions = []
                         ws_filter = self.convert_to_wireshark_filter(filt)
                         if ws_filter:
-                            matched_filters.append(ws_filter)
+                             matched_filters.append((ws_filter.strip(), list(self.entropy_conditions)))
 
         if not matched_filters:
             return False, "No Matching Filters Found", ""
 
-        combined_pairs = []
-
-        for filt, entropy in zip(matched_filters, matched_entropy):
+        for filt, entropy in matched_filters:
             # 각 필터를 base_filter와 결합
             filter_pkt = filter_pkt_default + " &&" + filt
 
