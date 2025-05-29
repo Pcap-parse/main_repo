@@ -1,7 +1,7 @@
 import os
 import json
 import re
-from lib.util import entry_format
+from lib.util import entry_format, create_uuid, find_uuid
 from lib.filter_conversations import filter_conversations
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -12,6 +12,7 @@ class filter_menu:
         self.basedir = config['basedir']
         self.result_dir = os.path.join(self.basedir, config['parse_result_dir'])
         self.filter_list_dir = os.path.join(self.basedir, config['filter_list'])
+        self.parse_filter_info = os.path.join(self.basedir, config['parse_list'])
     
     
     # 필터 값 입력 적용 함수
@@ -44,9 +45,9 @@ class filter_menu:
 
 
     # 필터 적용 결과 저장 함수
-    def save_filtered_data(self, name, filter_name, condition):
+    def save_filtered_data(self, parse_uuid, filter_name, condition):
         data = []
-
+        name = find_uuid(self.parse_filter_info, parse_uuid, "feature_name")
         # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
@@ -58,15 +59,10 @@ class filter_menu:
 
         # 동일한 name + filter 조건이 이미 존재하면 추가하지 않음
         for item in data:
-            if item.get("name") == name and item.get("filter") == condition:
+            if item.get("feature_name") == name and item.get("filter") == condition:
               return False, "Existed data", data
 
-        # 같은 name 중 가장 큰 id 찾기
-        max_id = max(
-            [item.get("id", 0) for item in data if item.get("name") == name],
-            default=0
-        )
-        new_id = max_id + 1
+        new_id = create_uuid()
 
         # 새 항목 추가
         new_entry = entry_format(name, filter_name, condition, new_id)
@@ -76,14 +72,13 @@ class filter_menu:
         with open(self.filter_list_dir , 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
-        return True, "Success", data
+        return True, "Success", new_entry
 
 
     # 필터 수정 api
-    def modify_filtered_data(self, name, id, filter):
-        # new_entry = entry_format(name, filter, id)
-
+    def modify_filtered_data(self, filter_uuid, filter):
         # 파일이 존재하면 기존 내용 불러오기, 없으면 빈 리스트로 시작
+        entry ={}
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -91,8 +86,9 @@ class filter_menu:
             return False, "File Not Found", ""
 
         for i, item in enumerate(data):
-            if item.get("name") == name and item.get("id") == id:
+            if item.get("uuid") == filter_uuid:
                 data[i]["filter"] = filter
+                entry = item
                 break
         else:
             return False, "Entry Not Found", ""
@@ -101,11 +97,12 @@ class filter_menu:
         with open(self.filter_list_dir , 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
-        return True, "Success", data
+        return True, "Success", entry
 
 
     # 명세 조회 함수
-    def retrieve_filtered_data(self, file_name, id):
+    def retrieve_filtered_data(self, filter_uuid):
+        uuid = find_uuid(self.filter_list_dir, filter_uuid, "uuid")
         # print(file_name)
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
@@ -113,26 +110,30 @@ class filter_menu:
 
             condition = None
             for entry in data:
-                if entry.get("name") == file_name and entry.get("id") == id:
+                if entry.get("uuid") == uuid:
                     condition = entry.get("filter")
+                    feature_name = entry.get("feature_name")
                     break
             if condition is None:
                 return False, "Entry Not Found", {}
             # print(condition)
-            _, _, data = self.filter_data(file_name, condition)
+            _, _, data = self.filter_data(feature_name, condition)
             return True, "Success", data
         
         else:
             return False, "File Not Found", {}
         
 
-    def all_filtered_data(self, name=None):
+    def all_filtered_data(self, feature_uuid=None):
+        feature_name = None
+        if feature_uuid:
+            feature_name = find_uuid(self.parse_filter_info, feature_uuid, "feature_name")
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 
-                if name:
-                    filtered = [item for item in data if item.get("name") == name]
+                if feature_name:
+                    filtered = [item for item in data if item.get("feature_name") == feature_name]
                     return True, "Success", filtered
                 else:
                     return True, "Success", data
@@ -141,13 +142,13 @@ class filter_menu:
 
 
     # 명세 삭제 함수
-    def delete_filtered_data(self, file_name, id):
+    def delete_filtered_data(self, filter_uuid):
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
             def is_match(entry):
-                return entry.get("name") == file_name and entry.get("id") == id
+                return entry.get("uuid") == filter_uuid
 
             if not any(is_match(entry) for entry in data):
                 return False, "Entry Not Found", []

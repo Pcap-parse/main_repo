@@ -1,5 +1,5 @@
 import sys
-from lib.util import validate_command, validate_target, response, extract_num_and_op
+from lib.util import validate_command, validate_target, response
 from lib.parse_menu import parse_menu
 from lib.filter_menu import filter_menu
 from lib.extract_pcapng import extract_pcapng
@@ -22,9 +22,9 @@ def parse_delete(param):
         return False, "Invalid parameter", ""
     
     # 파라미터 정의
-    parse_filename = f"{param[0]}.json"
+    parse_uuid = param[0]
 
-    result, msg, data = parse_menu(config).delete_json(parse_filename)
+    result, msg, data = parse_menu(config).delete_json(parse_uuid)
     return result, msg, data
 
 
@@ -39,9 +39,9 @@ def parse_read_list(param):
 def parse_read(param):
     if len(param) != 1:
         return False, "Invalid parameter", ""
-    file_name = param[0]
+    file_uuid = param[0]
     
-    result, msg, data = parse_menu(config).load_json(file_name)
+    result, msg, data = parse_menu(config).load_json(file_uuid)
     return result, msg, data
 
 
@@ -51,38 +51,36 @@ def filter_save(param):
         return False, "Invalid parameter", []
     
     # 파라미터 정의
-    parse_filename = f"{param[0]}.json"
+    parse_file_uuid = param[0]
     filter_name = param[1]
     filter_str = param[2]
     # entropy_str = param[3] if param[3] else ""
 
-    result, msg, data = filter_menu(config).save_filtered_data(parse_filename, filter_name, filter_str)
+    result, msg, data = filter_menu(config).save_filtered_data(parse_file_uuid, filter_name, filter_str)
     return result, msg, data
 
 
 def filter_delete(param):
     # 파라미터 수 검증
-    if len(param) != 2:
+    if len(param) != 1:
         return False, "Invalid parameter", []
     
     # 파라미터 정의
-    parse_filename = f"{param[0]}.json"
-    filter_id = int(param[1])
+    filter_uuid = param[0]
 
-    result, msg, data = filter_menu(config).delete_filtered_data(parse_filename, filter_id)
+    result, msg, data = filter_menu(config).delete_filtered_data(filter_uuid)
     return result, msg, data
 
 
 def filter_read(param):
     # 파라미터 수 검증
-    if len(param) != 2:
+    if len(param) != 1:
         return False, "Invalid parameter", {}
     
     # 파라미터 정의
-    parse_filename = f"{param[0]}.json"
-    filter_id = int(param[1])
+    filter_uuid = param[0]
 
-    result, msg, data = filter_menu(config).retrieve_filtered_data(parse_filename, filter_id)
+    result, msg, data = filter_menu(config).retrieve_filtered_data(filter_uuid)
     return result, msg, data
 
 
@@ -91,23 +89,22 @@ def filter_read_all(param):
     if len(param) not in (0, 1):
         return False, "Invalid parameter", []
 
-    name = f"{param[0]}.json" if len(param) == 1 and param[0] else None
+    feature_uuid = param[0] if len(param) == 1 and param[0] else None
 
-    result, msg, data = filter_menu(config).all_filtered_data(name)
+    result, msg, data = filter_menu(config).all_filtered_data(feature_uuid)
     return result, msg, data
 
 
 def filter_modify(param):
     # 파라미터 수 검증
-    if len(param) != 3:
+    if len(param) != 2:
         return False, "Invalid parameter", []
     
     # 파라미터 정의
-    parse_filename = f"{param[0]}.json"
-    filter_id = int(param[1])
-    filter_str = param[2]
+    filter_uuid = param[0]
+    filter_str = param[1]
 
-    result, msg, data = filter_menu(config).modify_filtered_data(parse_filename, filter_id, filter_str)
+    result, msg, data = filter_menu(config).modify_filtered_data(filter_uuid, filter_str)
     return result, msg, data
 
 
@@ -117,10 +114,10 @@ def save_pcapng(param):
         return False, "Invalid parameter", []
 
     # 파라미터 정의
-    parse_filename = f"{param[0]}"
+    feature_uuid = param[0]
     ids_and_ops = param[1]
 
-    result, msg, data = extract_pcapng(config).start(parse_filename, ids_and_ops)
+    result, msg, data = extract_pcapng(config).start(feature_uuid, ids_and_ops)
     return result, msg, data
 
 

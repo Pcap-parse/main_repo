@@ -1,7 +1,7 @@
 import os
 import subprocess
 import glob
-from lib.util import delete_split_dir, change_list
+from lib.util import delete_split_dir, change_list, create_uuid
 
 class wireshark_api:
     def __init__(self,config):
@@ -42,7 +42,8 @@ class wireshark_api:
     def merge_pcaps(self, pcap_list, output_file, idx):
         program = "mergecap" # "C:\\Program Files\\Wireshark\\mergecap.exe"
         os.makedirs(self.ext_pcapng, exist_ok=True)
-        output_file = os.path.join(self.ext_pcapng, f"{output_file}_filtered_{idx}.pcapng")
+        new_uuid = create_uuid()
+        output_file = os.path.join(self.ext_pcapng, f"{new_uuid}.pcapng")
         pcap_list = change_list(pcap_list)
 
         command = [program, "-w", output_file] + pcap_list

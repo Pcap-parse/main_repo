@@ -4,7 +4,7 @@ import re
 from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from lib.wireshark_api import wireshark_api
-from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte, clean_logical_operators, apply_logical_ops, extract_num_and_op
+from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte, clean_logical_operators, apply_logical_ops, extract_num_and_op, create_uuid, find_uuid
 from config import ops, filter_pkt_default
 
 
@@ -17,6 +17,7 @@ class extract_pcapng:
         self.filter_list_dir = os.path.join(self.basedir, config['filter_list'])
         self.pcap_file = os.path.join(self.basedir, config['pcapng_data_dir'])
         self.filtered_list = os.path.join(self.basedir, config["filtered_list"])
+        self.parse_filter_info = os.path.join(self.basedir, config['parse_list'])
         self.entropy_conditions = []
 
 
@@ -100,7 +101,7 @@ class extract_pcapng:
         split_pcaps = wireshark_api(self.config).split_pcap(pcap_file)
 
         if not split_pcaps:
-            print(f"분할된 파일이 없습니다: {pcap_file}")
+            print(f"No Splitted File: {pcap_file}")
             delete_split_dir(pcap_file)
             return False, "No Splitted File", ""
         
@@ -124,14 +125,14 @@ class extract_pcapng:
                         idx = item.get('id') + 1
 
             output_file = wireshark_api(self.config).merge_pcaps(results_list, merged_output, idx)
-            
+
             entry = {
                 "name": os.path.basename(output_file),
                 "file_path": output_file,
                 "feature_name": file_name,
                 "timestamp": get_time().isoformat(),
                 "filter_ids": ids_and_ops,
-                "id": idx
+                "uuid": os.path.splitext(os.path.basename(output_file))[0]
             }
             if os.path.exists(self.filtered_list):
                 # JSON 파일 열고 기존 데이터에 entry 추가
@@ -152,10 +153,10 @@ class extract_pcapng:
                 with open(self.filtered_list, 'w', encoding='utf-8') as f:
                     json.dump([entry], f, indent=2, ensure_ascii=False)
 
-            return True, "success", f"{output_file}"
+            return True, "success", f"{entry}"
 
         except Exception as e:
-            print(f"[ERROR] 분석 중 오류 발생: {e}")
+            print(f"[ERROR] from extract_pcapng: {e}")
             return False, str(e), ""
 
         finally:
@@ -223,10 +224,12 @@ class extract_pcapng:
 
         return result
 
-    def start(self, file_name, ids_and_ops):
-        file_json = f"{file_name}.json"
-        file_pcap = f"{file_name}.pcapng"
+    def start(self, feature_uuid, ids_and_ops):
+        file_json = find_uuid(self.parse_filter_info, feature_uuid, "feature_name")
+        file_pcap = find_uuid(self.parse_filter_info, feature_uuid, "pcap_path")
+        print(file_pcap)
         ids, operators = extract_num_and_op(ids_and_ops)
+        print(ids)
         
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir, 'r', encoding='utf-8') as f:
@@ -238,7 +241,7 @@ class extract_pcapng:
         combined_pairs = []
 
         for item in data:
-            if item.get("name") == file_json and item.get("id") in ids:
+            if item.get("uuid") in ids:
                 if "filter" in item:
                     filters = item["filter"]
 
@@ -268,8 +271,8 @@ class extract_pcapng:
         result, msg, data = self.analyze_pcap_file(input_folder, combined_pairs, file_json, operators, ids_and_ops)
         end = get_time()
 
-        print(f'시작시간 : {start.strftime("%H:%M:%S")}')
-        print(f'종료시간 : {end.strftime("%H:%M:%S")}')
+        print(f'startTime : {start.strftime("%H:%M:%S")}')
+        print(f'endTime : {end.strftime("%H:%M:%S")}')
 
         return result, msg, data
 

@@ -7,6 +7,8 @@ import binascii
 import ipaddress
 from itertools import chain
 import re
+import uuid
+import json
 
 def validate_command(command):
     if command in ["save", "delete", "read", "apply", "modify", "list"]:
@@ -79,11 +81,11 @@ def convert_value(value):
 
 def entry_format(name, filter_name, condition, id):
     entry = {
-        "name": name,
+        "feature_name": name,
         "filter_name": filter_name,
         "filter": condition,
         "timestamp": get_time().isoformat(),
-        "id": id
+        "uuid": id
     }
     return entry
 
@@ -150,24 +152,36 @@ def clean_logical_operators(expr):
 
 def extract_num_and_op(s):
     # 숫자만 추출 (정수)
-    numbers = list(map(int, re.findall(r'\d+', s)))
+    uuids = re.findall(r'[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}', s)
     # 연산자만 추출 (&&, ||)
     operators = re.findall(r'&&|\|\|', s)
-    return numbers, operators
+    return uuids, operators
 
 def apply_logical_ops(sets, operators):
     if not sets:
         return []
 
-    # print(sets)
     result = sets[0].copy()
 
     for i, op in enumerate(operators):
         next_set = sets[i + 1]
-
         if op == '&&':
             result = result & next_set  # 교집합
         elif op == '||':
             result = result | next_set  # 합집합
 
     return list(result)
+
+def create_uuid():
+    return str(uuid.uuid4())
+
+def find_uuid(file_path, target_uuid, target):
+    with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+    for item in data:
+        if isinstance(item, dict) and item.get("uuid") == target_uuid:
+            target_data = item.get(target)
+            break
+
+    return target_data

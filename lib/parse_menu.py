@@ -1,6 +1,6 @@
 import json
 import os
-from lib.util import get_time, delete_split_dir
+from lib.util import get_time, delete_split_dir, create_uuid, find_uuid
 from lib.parse_pcapng import parse_pcapng
 
 class parse_menu:
@@ -23,15 +23,15 @@ class parse_menu:
         base_filename = os.path.basename(file_name)
         name_only = os.path.splitext(base_filename)[0]
         json_name = f"{name_only}.json"
-        self.add_entry(json_name)
+        new_data = self.add_entry(json_name, file_name)
 
         dir_path = os.path.join(self.split_dir, name_only)
         delete_split_dir(dir_path)
 
-        print(f'시작시간 : {start.strftime("%H:%M:%S")}')
-        print(f'종료시간 : {end.strftime("%H:%M:%S")}')
+        print(f'startTime : {start.strftime("%H:%M:%S")}')
+        print(f'endTime : {end.strftime("%H:%M:%S")}')
 
-        return result, msg, data
+        return result, msg, new_data
     
 
     # json 조회
@@ -48,28 +48,33 @@ class parse_menu:
 
 
     # json append
-    def add_entry(self, name):
-        file_path = os.path.join(self.parse_json, name)
+    def add_entry(self, name, file_path):
         check, msg, data = self.load_json_list()
         data = data or []
+        new_entry = {}
+        
 
         # name을 기준으로 기존 항목이 있는지 확인
         found = False
         for entry in data:
-            if entry["name"] == name:
+            if entry["feature_name"] == name:
                 entry["timestamp"] = get_time().isoformat()
+                new_entry = entry
                 found = True
                 break
 
         # 없으면 새로 추가
         if not found:
-            data.append({
-                "name": name,
-                "file_path": file_path,
+            new_entry = {
+                "feature_name": name,
+                "pcap_path": file_path,
+                "uuid": create_uuid(),
                 "timestamp": get_time().isoformat()
-            })
+            }
+            data.append(new_entry)
 
         self.save_json_list(data)
+        return new_entry["uuid"]
 
 
     def flatten_results(self, result):
@@ -82,7 +87,8 @@ class parse_menu:
         return flat
 
 
-    def load_json(self, file_name):
+    def load_json(self, file_uuid):
+        file_name = find_uuid(self.parse_filter_info, file_uuid, "feature_name")
         file_path = os.path.join(self.parse_json, file_name)
         if not os.path.exists(file_path):
             return False, "File Not Found", ""
@@ -90,7 +96,8 @@ class parse_menu:
             return True, "success", json.load(f)
         
 
-    def delete_json(self, target_name):
+    def delete_json(self, file_uuid):
+        target_name = find_uuid(self.parse_filter_info, file_uuid, "feature_name")
         with open(self.parse_filter_info, "r", encoding="utf-8") as f:
             data = json.load(f)
 
@@ -98,14 +105,14 @@ class parse_menu:
         if os.path.exists(target_file_path):
             os.remove(target_file_path)
             original_len = len(data)
-            data = [entry for entry in data if entry.get("name") != target_name]
+            data = [entry for entry in data if entry.get("feature_name") != target_name]
             removed_count = original_len - len(data)
             if removed_count > 0:
                 with open(self.parse_filter_info, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
                 with open(self.filter_list_dir, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    filtered_data = [item for item in data if item.get("name") != target_name]
+                    filtered_data = [item for item in data if item.get("feature_name") != target_name]
                 with open(self.filter_list_dir, "w", encoding="utf-8") as f:
                     json.dump(filtered_data, f, indent=4, ensure_ascii=False)
                     

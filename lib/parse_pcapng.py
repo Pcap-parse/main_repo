@@ -82,7 +82,7 @@ class parse_pcapng:
         split_pcaps = wireshark_api(self.config).split_pcap(pcap_file)
 
         if not split_pcaps:
-            print(f"분할된 파일이 없습니다: {pcap_file}")
+            print(f"No Splitted File: {pcap_file}")
             return False, "No Splitted File", ""
 
         args = [(pcap, filter_pkt_default) for pcap in split_pcaps]
