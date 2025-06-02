@@ -11,6 +11,7 @@ class wireshark_api:
         self.pcap_file = os.path.join(self.basedir, config['pcapng_data_dir'])
         self.split_dir = os.path.join(self.basedir, config['split_pcaps'])
         self.ext_pcapng = os.path.join(self.basedir, config['filtered_pcapng_dir'])
+        self.extracts_dir = config['filtered_pcapng_dir']
         
 
     # editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
@@ -55,9 +56,19 @@ class wireshark_api:
 
     def merge_pcaps(self, pcap_list, output_file, idx):
         program = "mergecap" # "C:\\Program Files\\Wireshark\\mergecap.exe"
-        os.makedirs(self.ext_pcapng, exist_ok=True)
+        
+        current_path = self.basedir
+        while not current_path.endswith("cyber"):
+            parent = os.path.dirname(current_path)
+            if parent == current_path:  # 루트 디렉토리에 도달
+                raise Exception("No such Directory 'cyber'")
+            current_path = parent
+
+        ext_path = os.path.join(current_path, self.extracts_dir)
+        os.makedirs(ext_path, exist_ok=True)
         new_uuid = create_uuid()
-        output_file = os.path.join(self.ext_pcapng, f"{new_uuid}.pcapng")
+        output_file = os.path.join(ext_path, f"{new_uuid}.pcapng")
+        output_file = os.path.abspath(output_file)
         pcap_list = change_list(pcap_list)
 
         command = [program, "-w", output_file] + pcap_list

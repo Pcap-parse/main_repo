@@ -227,7 +227,7 @@ class extract_pcapng:
         return result
 
     def start(self, feature_uuid, ids_and_ops):
-        file_json = find_uuid(self.parse_filter_info, feature_uuid, "feature_name")
+        file_json = find_uuid(self.parse_filter_info, feature_uuid, "name")
         file_pcap = find_uuid(self.parse_filter_info, feature_uuid, "pcap_path")
         # print(file_pcap)
         ids, operators = extract_num_and_op(ids_and_ops)
@@ -254,15 +254,17 @@ class extract_pcapng:
                     for filt in filters:
                         self.entropy_conditions = []
                         ws_filter = self.convert_to_wireshark_filter(filt)
-                        if ws_filter:
-                             matched_filters.append((ws_filter.strip(), list(self.entropy_conditions)))
+                        # if ws_filter:
+                        matched_filters.append((ws_filter.strip(), list(self.entropy_conditions)))
 
         if not matched_filters:
             return False, "No Matching Filters Found", ""
 
         for filt, entropy in matched_filters:
-            # 각 필터를 base_filter와 결합
-            filter_pkt = filter_pkt_default + " &&" + filt
+            filter_pkt=""
+            if filt:
+                # 각 필터를 base_filter와 결합
+                filter_pkt = filter_pkt_default + " &&" + filt
 
             # (filter_pkt, entropy) 쌍을 리스트에 저장
             combined_pairs.append((filter_pkt, entropy))

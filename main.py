@@ -64,7 +64,7 @@ def filter_save(param):
 def filter_delete(param):
     # 파라미터 수 검증
     if len(param) != 1:
-        return False, "Invalid parameter", []
+        return False, "Invalid parameter", "Failed"
     
     # 파라미터 정의
     filter_uuid = param[0]

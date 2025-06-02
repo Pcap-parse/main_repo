@@ -7,7 +7,7 @@ config = {
     'parse_result_dir': 'tshark_json',
     'split_pcaps': 'split',
     'pcapng_data_dir': 'pcaps',
-    'filtered_pcapng_dir': 'pcapng_extract',
+    'filtered_pcapng_dir': 'extracts',
     'filter_list': 'filter_list.json',
     'filtered_list': 'extract_list.json'
 }

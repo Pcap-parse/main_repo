@@ -65,11 +65,21 @@ class parse_menu:
 
         # 없으면 새로 추가
         if not found:
+            name_parts = name.replace(".json", "").split("_")
+
+            name_info = {
+                "name": name_parts[0],
+                "start_time": name_parts[1],
+                "end_time": name_parts[2],
+                "hash": name_parts[3]
+            }
+
             new_entry = {
                 "name": name,
                 "pcap_path": file_path,
                 "id": create_uuid(),
-                "timestamp": get_time().isoformat()
+                "timestamp": get_time().isoformat(),
+                "name_info": name_info
             }
             data.append(new_entry)
 

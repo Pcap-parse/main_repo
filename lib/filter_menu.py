@@ -144,22 +144,25 @@ class filter_menu:
 
     # 명세 삭제 함수
     def delete_filtered_data(self, filter_uuid):
-        if os.path.exists(self.filter_list_dir):
-            with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
-                data = json.load(f)
+        if not os.path.exists(self.filter_list_dir):
+            return False, "File Not Found", "Failed"
 
-            def is_match(entry):
-                return entry.get("id") == filter_uuid
+        with open(self.filter_list_dir , 'r', encoding='utf-8') as f:
+            data = json.load(f)
 
-            if not any(is_match(entry) for entry in data):
-                return False, "Entry Not Found", []
+        deleted_name = None
+        updated_data = []
 
-            updated_data = [entry for entry in data if not is_match(entry)]
+        for entry in data:
+            if entry.get("id") == filter_uuid:
+                deleted_name = entry.get("filter_name")
+            else:
+                updated_data.append(entry)
 
-            with open(self.filter_list_dir, 'w', encoding='utf-8') as f:
-                json.dump(updated_data, f, indent=4, ensure_ascii=False)
+        if deleted_name is None:
+            return False, "Entry Not Found", "Failed"
 
-            return True, "Success", json.dump(updated_data)
-        
-        else:
-            return False, "File Not Found", []
+        with open(self.filter_list_dir, 'w', encoding='utf-8') as f:
+            json.dump(updated_data, f, indent=4, ensure_ascii=False)
+
+        return True, "Success", f"Successfully deleted {deleted_name}"
