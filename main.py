@@ -1,9 +1,10 @@
 import sys
-from lib.util import validate_command, validate_target, response
+from lib.util import validate_command, validate_target, response, extract_num_and_op
 from lib.parse_menu import parse_menu
 from lib.filter_menu import filter_menu
 from lib.extract_pcapng import extract_pcapng
 from config import config
+import json
 
 def parse_save(param):
     # 파라미터 수 검증
@@ -97,14 +98,15 @@ def filter_read_all(param):
 
 def filter_modify(param):
     # 파라미터 수 검증
-    if len(param) != 2:
+    if len(param) != 3:
         return False, "Invalid parameter", []
     
     # 파라미터 정의
     filter_uuid = param[0]
-    filter_str = param[1]
+    filter_name = param[1]
+    filter_str = param[2]
 
-    result, msg, data = filter_menu(config).modify_filtered_data(filter_uuid, filter_str)
+    result, msg, data = filter_menu(config).modify_filtered_data(filter_uuid, filter_name, filter_str)
     return result, msg, data
 
 
@@ -122,12 +124,15 @@ def save_pcapng(param):
 
 
 def pcapng_read_list(param):
-    if len(param) != 0:
+    # 파라미터 수 검증
+    if len(param) not in (0, 1):
         return False, "Invalid parameter", []
+
+    pcapng_uuid = param[0] if len(param) == 1 and param[0] else None
     
     list_filename = "extract_list.json" # pcapng_list 파일
 
-    result, msg, data = extract_pcapng(config).load_json(list_filename)
+    result, msg, data = extract_pcapng(config).load_json(list_filename, pcapng_uuid)
     return result, msg, data
 
 def main():
@@ -175,4 +180,4 @@ def main():
 
 if __name__ ==  "__main__":
     result = main()
-    print(result)
+    print(json.dumps(result))

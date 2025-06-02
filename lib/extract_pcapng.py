@@ -90,18 +90,18 @@ class extract_pcapng:
             return True
 
         except Exception as e:
-            print(f"Error in _check_conditions: {e}")
+            # print(f"Error in _check_conditions: {e}")
             return False
     
 
     # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
     def analyze_pcap_file(self, pcap_file, filter_pkt, file_name, operators, ids_and_ops):
-        print(f"Splitting {pcap_file}...")
+        # print(f"Splitting {pcap_file}...")
 
         split_pcaps = wireshark_api(self.config).split_pcap(pcap_file)
 
         if not split_pcaps:
-            print(f"No Splitted File: {pcap_file}")
+            # print(f"분할된 파일이 없습니다: {pcap_file}")
             delete_split_dir(pcap_file)
             return False, "No Splitted File", ""
         
@@ -132,7 +132,7 @@ class extract_pcapng:
                 "feature_name": file_name,
                 "timestamp": get_time().isoformat(),
                 "filter_ids": ids_and_ops,
-                "uuid": os.path.splitext(os.path.basename(output_file))[0]
+                "id": os.path.splitext(os.path.basename(output_file))[0]
             }
             if os.path.exists(self.filtered_list):
                 # JSON 파일 열고 기존 데이터에 entry 추가
@@ -156,7 +156,7 @@ class extract_pcapng:
             return True, "success", f"{entry}"
 
         except Exception as e:
-            print(f"[ERROR] from extract_pcapng: {e}")
+            # print(f"[ERROR] 분석 중 오류 발생: {e}")
             return False, str(e), ""
 
         finally:
@@ -210,6 +210,8 @@ class extract_pcapng:
                 return f"(tcp.len {op} {value} || udp.length {op} {str(int(value)+8)})"
             elif key == "protocol" and op == "==":
                 return f"_ws.col.protocol contains {value}"
+            elif key == "protocol" and op == "!=":
+                return f"!(_ws.col.protocol contains {value})"
             elif key == "packets":
                 return ""
             else:
@@ -227,9 +229,9 @@ class extract_pcapng:
     def start(self, feature_uuid, ids_and_ops):
         file_json = find_uuid(self.parse_filter_info, feature_uuid, "feature_name")
         file_pcap = find_uuid(self.parse_filter_info, feature_uuid, "pcap_path")
-        print(file_pcap)
+        # print(file_pcap)
         ids, operators = extract_num_and_op(ids_and_ops)
-        print(ids)
+        # print(ids)
         
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir, 'r', encoding='utf-8') as f:
@@ -241,7 +243,7 @@ class extract_pcapng:
         combined_pairs = []
 
         for item in data:
-            if item.get("uuid") in ids:
+            if item.get("id") in ids:
                 if "filter" in item:
                     filters = item["filter"]
 
@@ -266,19 +268,30 @@ class extract_pcapng:
             combined_pairs.append((filter_pkt, entropy))
 
         # print(combined_pairs)
-        input_folder = os.path.join(self.pcap_file, file_pcap)
+        if os.path.exists(file_pcap):
+            input_folder = file_pcap
+        else:
+            input_folder = os.path.join(self.pcap_file, file_pcap)
+
         start = get_time()
         result, msg, data = self.analyze_pcap_file(input_folder, combined_pairs, file_json, operators, ids_and_ops)
         end = get_time()
 
-        print(f'startTime : {start.strftime("%H:%M:%S")}')
-        print(f'endTime : {end.strftime("%H:%M:%S")}')
+        # print(f'시작시간 : {start.strftime("%H:%M:%S")}')
+        # print(f'종료시간 : {end.strftime("%H:%M:%S")}')
 
         return result, msg, data
 
-    def load_json(self, file_name):
+    def load_json(self, file_name, pcapng_uuid=None):
         file_path = os.path.join(self.basedir, file_name)
         if not os.path.exists(file_path):
             return False, "File Not Found", ""
         with open(file_path, "r", encoding="utf-8") as f:
-            return True, "success", json.load(f)
+            data = json.load(f)
+            if pcapng_uuid:
+                if isinstance(data, list):
+                    matched = [item for item in data if item.get("id") == pcapng_uuid]
+                    if matched:
+                        return True, "success", matched
+
+            return True, "success", data

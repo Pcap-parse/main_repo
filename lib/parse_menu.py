@@ -28,8 +28,8 @@ class parse_menu:
         dir_path = os.path.join(self.split_dir, name_only)
         delete_split_dir(dir_path)
 
-        print(f'startTime : {start.strftime("%H:%M:%S")}')
-        print(f'endTime : {end.strftime("%H:%M:%S")}')
+        # print(f'startTime : {start.strftime("%H:%M:%S")}')
+        # print(f'endTime : {end.strftime("%H:%M:%S")}')
 
         return result, msg, new_data
     
@@ -57,7 +57,7 @@ class parse_menu:
         # name을 기준으로 기존 항목이 있는지 확인
         found = False
         for entry in data:
-            if entry["feature_name"] == name:
+            if entry["name"] == name:
                 entry["timestamp"] = get_time().isoformat()
                 new_entry = entry
                 found = True
@@ -66,15 +66,15 @@ class parse_menu:
         # 없으면 새로 추가
         if not found:
             new_entry = {
-                "feature_name": name,
+                "name": name,
                 "pcap_path": file_path,
-                "uuid": create_uuid(),
+                "id": create_uuid(),
                 "timestamp": get_time().isoformat()
             }
             data.append(new_entry)
 
         self.save_json_list(data)
-        return new_entry["uuid"]
+        return new_entry["id"]
 
 
     def flatten_results(self, result):
@@ -88,7 +88,7 @@ class parse_menu:
 
 
     def load_json(self, file_uuid):
-        file_name = find_uuid(self.parse_filter_info, file_uuid, "feature_name")
+        file_name = find_uuid(self.parse_filter_info, file_uuid, "name")
         file_path = os.path.join(self.parse_json, file_name)
         if not os.path.exists(file_path):
             return False, "File Not Found", ""
@@ -97,7 +97,7 @@ class parse_menu:
         
 
     def delete_json(self, file_uuid):
-        target_name = find_uuid(self.parse_filter_info, file_uuid, "feature_name")
+        target_name = find_uuid(self.parse_filter_info, file_uuid, "name")
         with open(self.parse_filter_info, "r", encoding="utf-8") as f:
             data = json.load(f)
 
@@ -105,14 +105,14 @@ class parse_menu:
         if os.path.exists(target_file_path):
             os.remove(target_file_path)
             original_len = len(data)
-            data = [entry for entry in data if entry.get("feature_name") != target_name]
+            data = [entry for entry in data if entry.get("name") != target_name]
             removed_count = original_len - len(data)
             if removed_count > 0:
                 with open(self.parse_filter_info, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
                 with open(self.filter_list_dir, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    filtered_data = [item for item in data if item.get("feature_name") != target_name]
+                    filtered_data = [item for item in data if item.get("name") != target_name]
                 with open(self.filter_list_dir, "w", encoding="utf-8") as f:
                     json.dump(filtered_data, f, indent=4, ensure_ascii=False)
                     

@@ -71,18 +71,18 @@ class parse_pcapng:
             convs = self.parse_conv(tshark_output)
             return convs
         except Exception as e:
-            print(f"Error processing {pcap_chunk}: {e}")
+            # print(f"Error processing {pcap_chunk}: {e}")
             return {}
 
 
     # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
     def analyze_pcap_file(self, pcap_file):
-        print(f"Splitting {pcap_file}...")
+        # print(f"Splitting {pcap_file}...")
 
         split_pcaps = wireshark_api(self.config).split_pcap(pcap_file)
 
         if not split_pcaps:
-            print(f"No Splitted File: {pcap_file}")
+            # print(f"No Splitted File: {pcap_file}")
             return False, "No Splitted File", ""
 
         args = [(pcap, filter_pkt_default) for pcap in split_pcaps]

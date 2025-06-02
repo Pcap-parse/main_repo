@@ -34,10 +34,10 @@ def get_time():
 def delete_split_dir(dir_name):
     if os.path.isdir(dir_name):
         shutil.rmtree(dir_name)
-        print(f"[INFO] Deleted split directory: {dir_name}")
+        # print(f"[INFO] Deleted split directory: {dir_name}")
         return True
     else:
-        print(f"[WARNING] Directory does not exist: {dir_name}")
+        # print(f"[WARNING] Directory does not exist: {dir_name}")
         return False
     
 def normalize_protocol(proto):
@@ -81,11 +81,11 @@ def convert_value(value):
 
 def entry_format(name, filter_name, condition, id):
     entry = {
-        "feature_name": name,
+        "name": name,
         "filter_name": filter_name,
         "filter": condition,
         "timestamp": get_time().isoformat(),
-        "uuid": id
+        "id": id
     }
     return entry
 
@@ -179,8 +179,9 @@ def find_uuid(file_path, target_uuid, target):
     with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
+    target_data = ""
     for item in data:
-        if isinstance(item, dict) and item.get("uuid") == target_uuid:
+        if isinstance(item, dict) and item.get("id") == target_uuid:
             target_data = item.get(target)
             break
 

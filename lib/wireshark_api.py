@@ -15,27 +15,41 @@ class wireshark_api:
 
     # editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
     def split_pcap(self, pcap_file, chunk_size=200000):
-        program = "editcap" # "C:\\Program Files\\Wireshark\\editcap.exe"
+        program = "editcap"
         os.makedirs(self.split_dir, exist_ok=True)
         os.makedirs(self.pcap_file, exist_ok=True)
 
-        pcap_file_path = os.path.join(self.pcap_file, pcap_file)
-        
-        base_name = os.path.splitext(os.path.basename(pcap_file))[0]
+        if os.path.isabs(pcap_file):
+            # 절대 경로
+            pcap_file_path = pcap_file
+        elif os.path.exists(pcap_file):
+            # 상대 경로
+            pcap_file_path = os.path.abspath(pcap_file)
+        else:
+            pcap_file_path = os.path.join(self.pcap_file, os.path.basename(pcap_file))
+
+        if not os.path.exists(pcap_file_path):
+            # print(f"[ERROR] File does not exist: {pcap_file_path}")
+            return []
+
+        file_name_only = os.path.basename(pcap_file_path)
+        base_name = os.path.splitext(file_name_only)[0]
+
         split_dir_n = os.path.join(self.split_dir, base_name)
         os.makedirs(split_dir_n, exist_ok=True)
+
         output_pattern = os.path.join(split_dir_n, base_name)
-        split_file_pcap = output_pattern + ".pcapng"
+        split_file_pcap = output_pattern + "-%05d.pcapng"
 
         command = [program, "-c", str(chunk_size), pcap_file_path, split_file_pcap]
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         if result.returncode != 0:
             delete_split_dir(split_dir_n)
-            print(f"editcap Error: {result.stderr}")
+            # print(f"editcap Error: {result.stderr}")
             return []
 
-        split_files = glob.glob(os.path.join(split_dir_n, f"{base_name}_*"))
+        split_files = glob.glob(os.path.join(split_dir_n, "*.pcapng"))
         return split_files
 
 
@@ -51,7 +65,7 @@ class wireshark_api:
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if result.returncode != 0:
             raise Exception(f"mergecap error: {result.stderr}")
-        print(f"Merged into: {output_file}")
+        # print(f"Merged into: {output_file}")
 
         return output_file
 
@@ -148,7 +162,7 @@ class wireshark_api:
             result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
             if result.returncode != 0:
-                print(f"[ERROR] Failed to extract frames chunk {i+1}:\n{result.stderr}")
+                # print(f"[ERROR] Failed to extract frames chunk {i+1}:\n{result.stderr}")
                 return []
 
             # print(f"Extracted chunk {i+1}/{total_chunks} with {len(chunk_frames)} frames to {output_pcap}")
