@@ -1,5 +1,5 @@
 import sys
-from lib.util import validate_command, validate_target, response, extract_num_and_op
+from lib.util import validate_command, validate_target, response
 from lib.parse_menu import parse_menu
 from lib.filter_menu import filter_menu
 from lib.extract_pcapng import extract_pcapng
