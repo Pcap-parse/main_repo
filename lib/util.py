@@ -10,17 +10,20 @@ import re
 import uuid
 import json
 
+
 def validate_command(command):
     if command in ["save", "delete", "read", "apply", "modify", "list"]:
         return True
     return False
+
 
 def validate_target(command):
     if command in ["parse", "filter", "pcapng"]:
         return True
     return False
 
-def response(result, msg = "", data = ""):
+
+def response(result, msg="", data=""):
     res = {
         "success": result,
         "msg": msg,
@@ -28,8 +31,10 @@ def response(result, msg = "", data = ""):
     }
     return res
 
+
 def get_time():
     return datetime.now()
+
 
 def delete_split_dir(dir_name):
     if os.path.isdir(dir_name):
@@ -39,15 +44,18 @@ def delete_split_dir(dir_name):
     else:
         # print(f"[WARNING] Directory does not exist: {dir_name}")
         return False
-    
+
+
 def normalize_protocol(proto):
     if '/' in proto:
         proto = proto.split('/')[0]
     return proto
 
+
 @lru_cache(maxsize=256)
 def fast_log2(count: int, length: int) -> float:
     return math.log2(count / length)
+
 
 def calculate_entropy(data: bytes) -> float:
     if not data:
@@ -66,8 +74,10 @@ def calculate_entropy(data: bytes) -> float:
 
     return entropy
 
+
 def hex_to_byte(payload):
     return binascii.unhexlify(payload)
+
 
 def convert_value(value):
     if isinstance(value, str):
@@ -79,6 +89,7 @@ def convert_value(value):
             return value
     return value
 
+
 def entry_format(name, filter_name, condition, id):
     entry = {
         "name": name,
@@ -89,6 +100,7 @@ def entry_format(name, filter_name, condition, id):
     }
     return entry
 
+
 def format_ip_field(value: str) -> str:
     try:
         ip_obj = ipaddress.ip_address(value)
@@ -98,7 +110,8 @@ def format_ip_field(value: str) -> str:
             return "ipv6.addr"
     except ValueError:
         return ""  # IP가 아니면 빈 문자열 반환
-    
+
+
 def change_list(pcap_list):
     if not isinstance(pcap_list, list):
         raise TypeError(f"Expected list of lists, got {type(pcap_list).__name__}")
@@ -150,12 +163,14 @@ def clean_logical_operators(expr):
 
     return process(expr)
 
+
 def extract_num_and_op(s):
     # 숫자만 추출 (정수)
     uuids = re.findall(r'[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}', s)
     # 연산자만 추출 (&&, ||)
     operators = re.findall(r'&&|\|\|', s)
     return uuids, operators
+
 
 def apply_logical_ops(sets, operators):
     if not sets:
@@ -172,12 +187,14 @@ def apply_logical_ops(sets, operators):
 
     return list(result)
 
+
 def create_uuid():
     return str(uuid.uuid4())
 
+
 def find_uuid(file_path, target_uuid, target):
     with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        data = json.load(f)
 
     target_data = ""
     for item in data:
@@ -186,3 +203,13 @@ def find_uuid(file_path, target_uuid, target):
             break
 
     return target_data
+
+def cyber_path(base_dir):
+    current_path = base_dir
+    while not current_path.endswith("cyber"):
+        parent = os.path.dirname(current_path)
+        if parent == current_path:  # 루트 디렉토리에 도달
+            raise Exception("No such Directory 'cyber'")
+        current_path = parent
+        
+    return current_path

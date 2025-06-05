@@ -25,7 +25,7 @@ class parse_pcapng:
             fields = line.split("\t")
             if len(fields) != 11:
                 continue
-            
+
             src_ip = fields[0] if fields[0] else fields[1]
             dst_ip = fields[4] if fields[4] else fields[5]
 
@@ -35,12 +35,12 @@ class parse_pcapng:
             payload_len = 0
             if tcp_src and tcp_dst:
                 src_port, dst_port = tcp_src, tcp_dst
-                layer="tcp"
+                layer = "tcp"
                 binary_data = hex_to_byte(tcp_payload)
                 payload_len = len(binary_data) if tcp_payload else 0
             elif udp_src and udp_dst:
                 src_port, dst_port = udp_src, udp_dst
-                layer="udp"
+                layer = "udp"
                 binary_data = hex_to_byte(udp_payload)
                 payload_len = len(binary_data) if udp_payload else 0
 
@@ -100,7 +100,7 @@ class parse_pcapng:
             json.dump(merged_results, json_file, indent=4)
 
         return True, "success", f"{output_file}"
-        
+
 
     def merge_results(self, all_results):
         merged_data = {layer: {} for layer in ["tcp", "udp"]}
@@ -115,7 +115,7 @@ class parse_pcapng:
                 for conv in conversations:
                     ip_pair = tuple(sorted([(conv["address_a"], conv["port_a"]), (conv["address_b"], conv["port_b"])]))
                     proto = conv["protocol"]
-                    #proto = conv["protocol"]
+                    # proto = conv["protocol"]
 
                     key = (ip_pair, proto)
                     if key not in merged_data[layer]:
@@ -125,7 +125,7 @@ class parse_pcapng:
 
                     else:
                         existing = merged_data[layer][key]
-                        
+
                         # 나머지 데이터도 합침
                         existing["bytes"] += conv["bytes"]
                         existing["packets"] += conv["packets"]

@@ -4,7 +4,7 @@ import re
 from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from lib.wireshark_api import wireshark_api
-from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte, clean_logical_operators, apply_logical_ops, extract_num_and_op, create_uuid, find_uuid
+from lib.util import delete_split_dir, get_time, format_ip_field, calculate_entropy, hex_to_byte, clean_logical_operators, apply_logical_ops, extract_num_and_op, find_uuid, cyber_path
 from config import ops, filter_pkt_default
 
 
@@ -15,7 +15,6 @@ class extract_pcapng:
         self.split_dir = os.path.join(self.basedir, config['split_pcaps'])
         self.ext_pcapng = os.path.join(self.basedir, config['filtered_pcapng_dir'])
         self.filter_list_dir = os.path.join(self.basedir, config['filter_list'])
-        self.pcap_file = os.path.join(self.basedir, config['pcapng_data_dir'])
         self.filtered_list = os.path.join(self.basedir, config["filtered_list"])
         self.parse_filter_info = os.path.join(self.basedir, config['parse_list'])
         self.entropy_conditions = []
@@ -96,13 +95,19 @@ class extract_pcapng:
 
     # 하나의 PCAP 파일을 분할 후 병렬 분석 및 결과 합치기
     def analyze_pcap_file(self, pcap_file, filter_pkt, file_name, operators, ids_and_ops):
-        # print(f"Splitting {pcap_file}...")
+        if os.path.exists(pcap_file):
+            input_folder = os.path.abspath(pcap_file)
+        else:
+            current_path = cyber_path(self.basedir)
+            input_folder = os.path.join(current_path, pcap_file)
 
-        split_pcaps = wireshark_api(self.config).split_pcap(pcap_file)
+        print(f"Splitting {pcap_file}...")
+
+        split_pcaps = wireshark_api(self.config).split_pcap(input_folder)
 
         if not split_pcaps:
-            # print(f"분할된 파일이 없습니다: {pcap_file}")
-            delete_split_dir(pcap_file)
+            print(f"분할된 파일이 없습니다: {pcap_file}")
+            # delete_split_dir(pcap_file)
             return False, "No Splitted File", ""
         
         base_name= os.path.splitext(os.path.basename(pcap_file))[0]
@@ -128,7 +133,7 @@ class extract_pcapng:
 
             entry = {
                 "name": os.path.basename(output_file),
-                "file_path": output_file,
+                "file_path": pcap_file,
                 "feature_name": file_name,
                 "timestamp": get_time().isoformat(),
                 "filter_ids": ids_and_ops,
@@ -153,7 +158,7 @@ class extract_pcapng:
                 with open(self.filtered_list, 'w', encoding='utf-8') as f:
                     json.dump([entry], f, indent=2, ensure_ascii=False)
 
-            return True, "success", f"{entry}"
+            return True, "success", entry
 
         except Exception as e:
             # print(f"[ERROR] 분석 중 오류 발생: {e}")
@@ -270,13 +275,9 @@ class extract_pcapng:
             combined_pairs.append((filter_pkt, entropy))
 
         # print(combined_pairs)
-        if os.path.exists(file_pcap):
-            input_folder = file_pcap
-        else:
-            input_folder = os.path.join(self.pcap_file, file_pcap)
 
         start = get_time()
-        result, msg, data = self.analyze_pcap_file(input_folder, combined_pairs, file_json, operators, ids_and_ops)
+        result, msg, data = self.analyze_pcap_file(file_pcap, combined_pairs, file_json, operators, ids_and_ops)
         end = get_time()
 
         # print(f'시작시간 : {start.strftime("%H:%M:%S")}')
@@ -287,7 +288,7 @@ class extract_pcapng:
     def load_json(self, file_name, pcapng_uuid=None):
         file_path = os.path.join(self.basedir, file_name)
         if not os.path.exists(file_path):
-            return False, "File Not Found", ""
+            return False, "File Not Found", []
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             if pcapng_uuid:

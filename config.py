@@ -37,9 +37,6 @@ ops = {
 }
 
 filter_pkt_default = (
-    "!tcp.analysis.retransmission && "
-    "!tcp.analysis.fast_retransmission && "
-    "!tcp.analysis.spurious_retransmission && "
     "!_ws.malformed && "
     "(tcp.srcport || udp.srcport)"
 )

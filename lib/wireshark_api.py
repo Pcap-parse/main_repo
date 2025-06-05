@@ -1,10 +1,11 @@
 import os
 import subprocess
 import glob
-from lib.util import delete_split_dir, change_list, create_uuid
+from lib.util import delete_split_dir, change_list, create_uuid, cyber_path
+
 
 class wireshark_api:
-    def __init__(self,config):
+    def __init__(self, config):
         self.basedir = config['basedir']
         self.parse_json = os.path.join(self.basedir, config['parse_list'])
         self.result_dir = os.path.join(self.basedir, config['parse_result_dir'])
@@ -12,7 +13,7 @@ class wireshark_api:
         self.split_dir = os.path.join(self.basedir, config['split_pcaps'])
         self.ext_pcapng = os.path.join(self.basedir, config['filtered_pcapng_dir'])
         self.extracts_dir = config['filtered_pcapng_dir']
-        
+
 
     # editcap을 이용해 pcap 파일을 chunk_size 개의 패킷 단위로 분할
     def split_pcap(self, pcap_file, chunk_size=200000):
@@ -23,11 +24,9 @@ class wireshark_api:
         if os.path.isabs(pcap_file):
             # 절대 경로
             pcap_file_path = pcap_file
-        elif os.path.exists(pcap_file):
+        else:
             # 상대 경로
             pcap_file_path = os.path.abspath(pcap_file)
-        else:
-            pcap_file_path = os.path.join(self.pcap_file, os.path.basename(pcap_file))
 
         if not os.path.exists(pcap_file_path):
             # print(f"[ERROR] File does not exist: {pcap_file_path}")
@@ -55,15 +54,9 @@ class wireshark_api:
 
 
     def merge_pcaps(self, pcap_list, output_file, idx):
-        program = "mergecap" # "C:\\Program Files\\Wireshark\\mergecap.exe"
-        
-        current_path = self.basedir
-        while not current_path.endswith("cyber"):
-            parent = os.path.dirname(current_path)
-            if parent == current_path:  # 루트 디렉토리에 도달
-                raise Exception("No such Directory 'cyber'")
-            current_path = parent
+        program = "mergecap"  # "C:\\Program Files\\Wireshark\\mergecap.exe"
 
+        current_path = cyber_path(self.basedir)
         ext_path = os.path.join(current_path, self.extracts_dir)
         os.makedirs(ext_path, exist_ok=True)
         new_uuid = create_uuid()
@@ -82,7 +75,7 @@ class wireshark_api:
 
 
     def extract_conv(self, pcap_file, filter_pkt):
-        program = "tshark" # "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
+        program = "tshark"  # "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
         command = [
             program,
             "-r", pcap_file,
@@ -113,7 +106,7 @@ class wireshark_api:
     def extract_pcap(self, pcap_file, filter_pkt):
         """필터 조건에 맞는 패킷만 새로운 pcapng 파일로 저장"""
         os.makedirs(self.ext_pcapng, exist_ok=True)
-        program = "tshark" # "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
+        program = "tshark"  # "C:\\Program Files\\Wireshark\\tshark.exe" # tshark 기본 경로
 
         command = [
             program,
@@ -131,26 +124,26 @@ class wireshark_api:
             raise RuntimeError(f"[ERROR] Failed to extract filtered pcap:\n{result.stderr}")
 
         return result.stdout
-    
+
 
     def run_editcap(self, args):
         idx, chunk, pcap_file, output_pcapng = args
         temp_output = output_pcapng if idx == 0 else f"part{idx}_{output_pcapng}"
         command = [
-            "editcap" # "C:\\Program Files\\Wireshark\\editcap.exe",
-            "-r", pcap_file,
-            temp_output
-        ] + chunk
+                      "editcap"  # "C:\\Program Files\\Wireshark\\editcap.exe",
+                      "-r", pcap_file,
+                      temp_output
+                  ] + chunk
         subprocess.run(command, stderr=subprocess.PIPE, text=True)
         return temp_output
-    
+
 
     def extract_matched_frames(self, input_pcap, matched_frames):
         if not matched_frames:
             # print("No matched frames to extract.")
             return []
 
-        program = "editcap" #"C:\\Program Files\\Wireshark\\editcap.exe"  # editcap 경로
+        program = "editcap"  # "C:\\Program Files\\Wireshark\\editcap.exe"  # editcap 경로
         base_name = os.path.splitext(os.path.basename(input_pcap))[0]
         output_dir = os.path.join(self.ext_pcapng, "split")
         os.makedirs(output_dir, exist_ok=True)
@@ -160,15 +153,15 @@ class wireshark_api:
         output_files = []
 
         for i in range(total_chunks):
-            chunk_frames = matched_frames[i*chunk_size:(i+1)*chunk_size]
-            output_pcap = os.path.join(output_dir, f"{base_name}{i+1}.pcapng")
+            chunk_frames = matched_frames[i * chunk_size:(i + 1) * chunk_size]
+            output_pcap = os.path.join(output_dir, f"{base_name}{i + 1}.pcapng")
             output_files.append(output_pcap)
 
             command = [
-                program,
-                "-r", input_pcap,
-                output_pcap
-            ] + chunk_frames
+                          program,
+                          "-r", input_pcap,
+                          output_pcap
+                      ] + chunk_frames
 
             result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 

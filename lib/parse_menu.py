@@ -3,6 +3,7 @@ import os
 from lib.util import get_time, delete_split_dir, create_uuid, find_uuid
 from lib.parse_pcapng import parse_pcapng
 
+
 class parse_menu:
     def __init__(self, config):
         self.config = config
@@ -14,16 +15,23 @@ class parse_menu:
 
 
     def start(self, file_name):
+        if os.path.isabs(file_name):
+            # 절대 경로
+            pcap_file_path = file_name
+        else:
+            # 상대 경로
+            pcap_file_path = os.path.abspath(file_name)
+        
         start = get_time()
-        result, msg, data = parse_pcapng(self.config).analyze_pcap_file(file_name)
+        result, msg, data = parse_pcapng(self.config).analyze_pcap_file(pcap_file_path)
         if not result:
             return result, msg, data
         end = get_time()
 
-        base_filename = os.path.basename(file_name)
+        base_filename = os.path.basename(pcap_file_path)
         name_only = os.path.splitext(base_filename)[0]
         json_name = f"{name_only}.json"
-        new_data = self.add_entry(json_name, file_name)
+        new_data = self.add_entry(json_name, pcap_file_path)
 
         dir_path = os.path.join(self.split_dir, name_only)
         delete_split_dir(dir_path)
@@ -32,7 +40,7 @@ class parse_menu:
         # print(f'endTime : {end.strftime("%H:%M:%S")}')
 
         return result, msg, new_data
-    
+
 
     # json 조회
     def load_json_list(self):
@@ -40,8 +48,8 @@ class parse_menu:
             return False, "File Not Found", ""
         with open(self.parse_filter_info, "r", encoding="utf-8") as f:
             return True, "success", self.flatten_results(json.load(f))
-            
-        
+
+
     def save_json_list(self, data):
         with open(self.parse_filter_info, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -52,7 +60,7 @@ class parse_menu:
         check, msg, data = self.load_json_list()
         data = data or []
         new_entry = {}
-        
+
 
         # name을 기준으로 기존 항목이 있는지 확인
         found = False
@@ -104,7 +112,7 @@ class parse_menu:
             return False, "File Not Found", ""
         with open(file_path, "r", encoding="utf-8") as f:
             return True, "success", json.load(f)
-        
+
 
     def delete_json(self, file_uuid):
         target_name = find_uuid(self.parse_filter_info, file_uuid, "name")
@@ -125,7 +133,7 @@ class parse_menu:
                     filtered_data = [item for item in data if item.get("name") != target_name]
                 with open(self.filter_list_dir, "w", encoding="utf-8") as f:
                     json.dump(filtered_data, f, indent=4, ensure_ascii=False)
-                    
+
             with open(self.parse_filter_info, "r", encoding="utf-8") as f:
                 list_data = self.flatten_results(json.load(f))
             return True, "success", list_data
@@ -149,4 +157,3 @@ class parse_menu:
             return True, "success", data
         except FileNotFoundError:
             return False, "File Not Found", ""
-    
