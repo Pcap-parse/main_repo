@@ -104,29 +104,42 @@ class filter_menu:
 
     # 명세 조회 함수
     def retrieve_filtered_data(self, filter_uuid):
-        uuid = find_uuid(self.filter_list_dir, filter_uuid, "id")
-        # print(file_name)
         if os.path.exists(self.filter_list_dir):
             with open(self.filter_list_dir, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            condition = None
+            filter_data = None
             for entry in data:
-                if entry.get("id") == uuid:
-                    condition = entry.get("filter")
-                    feature_name = entry.get("name")
+                if entry.get("id") == filter_uuid:
+                    filter_data = entry
                     break
-            if condition is None:
+
+            if filter_data is None:
                 return False, "Entry Not Found", {}
-            # print(condition)
-            _, _, data = self.filter_data(feature_name, condition)
-            return True, "Success", data
+
+            # feature_id 추가
+            feature_id = None
+            feature_name = filter_data.get("name")
+
+            if os.path.exists(self.parse_filter_info):
+                with open(self.parse_filter_info, 'r', encoding='utf-8') as pf:
+                    parse_info = json.load(pf)
+                    matched_feature = next((f for f in parse_info if f.get("name") == feature_name), None)
+                    if matched_feature:
+                        feature_id = matched_feature.get("id")
+
+            filter_data["feature_id"] = feature_id
+
+            return True, "Success", filter_data
 
         else:
             return False, "File Not Found", {}
 
 
     def all_filtered_data(self, feature_uuid=None):
+        with open(self.parse_filter_info, 'r', encoding='utf-8') as pf:
+            parse_info = json.load(pf)
+
         feature_name = None
         if feature_uuid:
             feature_name = find_uuid(self.parse_filter_info, feature_uuid, "name")
@@ -136,8 +149,19 @@ class filter_menu:
 
                 if feature_name:
                     filtered = [item for item in data if item.get("name") == feature_name]
+
+                    # filtered에 feature_id 추가
+                    for item in filtered:
+                        item["feature_id"] = feature_uuid
+
                     return True, "Success", filtered
                 else:
+                    for item in data:
+                        matching_feature = next(
+                            (f for f in parse_info if f.get("name") == item.get("name")), None
+                        )
+                        item["feature_id"] = matching_feature.get("id") if matching_feature else None
+
                     return True, "Success", data
         else:
             return False, "File Not Found", []

@@ -111,7 +111,15 @@ class parse_menu:
         if not os.path.exists(file_path):
             return False, "File Not Found", ""
         with open(file_path, "r", encoding="utf-8") as f:
-            return True, "success", json.load(f)
+            feature_data = json.load(f)
+
+        with open(self.parse_filter_info, "r", encoding="utf-8") as f:
+            feature_info = json.load(f)
+
+        matching_info = next(item for item in feature_info if item.get("id") == file_uuid)
+        feature_data.update(matching_info)
+
+        return True, "success", feature_data
 
 
     def delete_json(self, file_uuid):
